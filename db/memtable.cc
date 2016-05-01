@@ -87,22 +87,22 @@ void MemTable::Add(SequenceNumber s, ValueType type,
   //  key bytes    : char[internal_key.size()]
   //  value_size   : varint32 of value.size()
   //  value bytes  : char[value.size()]
-  size_t key_size = key.size();
-  size_t val_size = value.size();
-  size_t internal_key_size = key_size + 8;
+  size_t key_size = key.size();//key的大小
+  size_t val_size = value.size();//value的大小
+  size_t internal_key_size = key_size + 8;//内部key size要比keysize大8，那8表示的是SequenceNumber和type
   const size_t encoded_len =
       VarintLength(internal_key_size) + internal_key_size +
-      VarintLength(val_size) + val_size;
+      VarintLength(val_size) + val_size;//varIntLength，表示int占用的空间，可变长度的Integer
   char* buf = arena_.Allocate(encoded_len);
-  char* p = EncodeVarint32(buf, internal_key_size);
-  memcpy(p, key.data(), key_size);
-  p += key_size;
-  EncodeFixed64(p, (s << 8) | type);
-  p += 8;
-  p = EncodeVarint32(p, val_size);
-  memcpy(p, value.data(), val_size);
+  char* p = EncodeVarint32(buf, internal_key_size);//先把key大小放入到buffer中，
+  memcpy(p, key.data(), key_size);//将key拷贝到buf中
+  p += key_size;//移动key size大小
+  EncodeFixed64(p, (s << 8) | type);//将s左移动8位，然后或type（这东西就是标志顺序号和类型（增加还是删除），顺序号是64bit，高位没啥用，直接移除掉，地位补充类型，EncodeFixed64用于区分大端和小端系统
+  p += 8;//标志和类型用8byte。
+  p = EncodeVarint32(p, val_size);//之后存放的是value
+  memcpy(p, value.data(), val_size);//将数据拷贝到buf
   assert((p + val_size) - buf == encoded_len);
-  table_.Insert(buf);
+  table_.Insert(buf);//插入skipList
 }
 
 bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
@@ -124,16 +124,16 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
     const char* key_ptr = GetVarint32Ptr(entry, entry+5, &key_length);
     if (comparator_.comparator.user_comparator()->Compare(
             Slice(key_ptr, key_length - 8),
-            key.user_key()) == 0) {
+            key.user_key()) == 0) {//key比较相等
       // Correct user key
       const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);
-      switch (static_cast<ValueType>(tag & 0xff)) {
-        case kTypeValue: {
+      switch (static_cast<ValueType>(tag & 0xff)) {//解析出type
+        case kTypeValue: {//如果type是添加
           Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
-          value->assign(v.data(), v.size());
+          value->assign(v.data(), v.size());//获取数据
           return true;
         }
-        case kTypeDeletion:
+        case kTypeDeletion://type是删除
           *s = Status::NotFound(Slice());
           return true;
       }

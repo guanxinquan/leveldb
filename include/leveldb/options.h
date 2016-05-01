@@ -20,7 +20,7 @@ class Snapshot;
 // sequence of key,value pairs.  Each block may be compressed before
 // being stored in a file.  The following enum describes which
 // compression method (if any) is used to compress a block.
-enum CompressionType {
+enum CompressionType {//block在存储到文件之前，有可能会使用压缩算法，目前配置只有两种，一种是不压缩，一种是snappy
   // NOTE: do not change the values of existing entries, as these are
   // part of the persistent format on disk.
   kNoCompression     = 0x0,
@@ -33,7 +33,7 @@ struct Options {
   // Parameters that affect behavior
 
   // Comparator used to define the order of keys in the table.
-  // Default: a comparator that uses lexicographic byte-wise ordering
+  // Default: a comparator that uses lexicographic byte-wise ordering 默认比较器使用字典次序
   //
   // REQUIRES: The client must ensure that the comparator supplied
   // here has the same name and orders keys *exactly* the same as the
@@ -46,7 +46,7 @@ struct Options {
 
   // If true, an error is raised if the database already exists.
   // Default: false
-  bool error_if_exists;
+  bool error_if_exists;//如果数据库已经存在，会抛出一个异常
 
   // If true, the implementation will do aggressive checking of the
   // data it is processing and will stop early if it detects any
@@ -80,7 +80,7 @@ struct Options {
   // the next time the database is opened.
   //
   // Default: 4MB
-  size_t write_buffer_size;
+  size_t write_buffer_size;//内存中 的数据大小（这些数据通过一个unsorted log存放在磁盘上），提高大小能提高性能，但是会影响服务回复性能。
 
   // Number of open files that can be used by the DB.  You may need to
   // increase this if your database has a large working set (budget
