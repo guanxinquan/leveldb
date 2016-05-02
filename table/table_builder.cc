@@ -136,7 +136,7 @@ void TableBuilder::Flush() {
   }
 }
 
-void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
+void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {//写入block
   // File format contains a sequence of blocks where each block has:
   //    block_data: uint8[n]
   //    type: uint8
@@ -176,18 +176,18 @@ void TableBuilder::WriteRawBlock(const Slice& block_contents,
                                  CompressionType type,
                                  BlockHandle* handle) {
   Rep* r = rep_;
-  handle->set_offset(r->offset);
-  handle->set_size(block_contents.size());
-  r->status = r->file->Append(block_contents);
+  handle->set_offset(r->offset);//offset
+  handle->set_size(block_contents.size());//size
+  r->status = r->file->Append(block_contents);//将当前数据写入文件
   if (r->status.ok()) {
     char trailer[kBlockTrailerSize];
     trailer[0] = type;
     uint32_t crc = crc32c::Value(block_contents.data(), block_contents.size());
     crc = crc32c::Extend(crc, trailer, 1);  // Extend crc to cover block type
     EncodeFixed32(trailer+1, crc32c::Mask(crc));
-    r->status = r->file->Append(Slice(trailer, kBlockTrailerSize));
+    r->status = r->file->Append(Slice(trailer, kBlockTrailerSize));//将type和crc写入文件
     if (r->status.ok()) {
-      r->offset += block_contents.size() + kBlockTrailerSize;
+      r->offset += block_contents.size() + kBlockTrailerSize;//移动当前的offset为新的位置
     }
   }
 }

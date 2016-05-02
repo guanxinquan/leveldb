@@ -60,7 +60,7 @@ size_t BlockBuilder::CurrentSizeEstimate() const {
           sizeof(uint32_t));                      // Restart array length
 }
 
-Slice BlockBuilder::Finish() {
+Slice BlockBuilder::Finish() {//将restart的个数和数组追加到block数据后面
   // Append restart array
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
@@ -77,30 +77,30 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   assert(buffer_.empty() // No values yet?
          || options_->comparator->Compare(key, last_key_piece) > 0);
   size_t shared = 0;
-  if (counter_ < options_->block_restart_interval) {
+  if (counter_ < options_->block_restart_interval) {//不需要重启点
     // See how much sharing to do with previous string
     const size_t min_length = std::min(last_key_piece.size(), key.size());
     while ((shared < min_length) && (last_key_piece[shared] == key[shared])) {
-      shared++;
+      shared++;//计算共有部分
     }
   } else {
     // Restart compression
     restarts_.push_back(buffer_.size());
     counter_ = 0;
   }
-  const size_t non_shared = key.size() - shared;
+  const size_t non_shared = key.size() - shared;//非共享部分的长度
 
   // Add "<shared><non_shared><value_size>" to buffer_
-  PutVarint32(&buffer_, shared);
-  PutVarint32(&buffer_, non_shared);
-  PutVarint32(&buffer_, value.size());
+  PutVarint32(&buffer_, shared);//shared的长度
+  PutVarint32(&buffer_, non_shared);//noshard部分的长度
+  PutVarint32(&buffer_, value.size());//值的长度
 
   // Add string delta to buffer_ followed by value
-  buffer_.append(key.data() + shared, non_shared);
-  buffer_.append(value.data(), value.size());
+  buffer_.append(key.data() + shared, non_shared);//放入deta string
+  buffer_.append(value.data(), value.size());//放入value数据
 
   // Update state
-  last_key_.resize(shared);
+  last_key_.resize(shared);//last key转换为新的key
   last_key_.append(key.data() + shared, non_shared);
   assert(Slice(last_key_) == key);
   counter_++;

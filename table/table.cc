@@ -44,14 +44,14 @@ Status Table::Open(const Options& options,
     return Status::Corruption("file is too short to be an sstable");
   }
 
-  char footer_space[Footer::kEncodedLength];
+  char footer_space[Footer::kEncodedLength];//先读取Footer
   Slice footer_input;
   Status s = file->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
-                        &footer_input, footer_space);
+                        &footer_input, footer_space);//将footer读取出来
   if (!s.ok()) return s;
 
   Footer footer;
-  s = footer.DecodeFrom(&footer_input);
+  s = footer.DecodeFrom(&footer_input);//转换出Footer其它字段
   if (!s.ok()) return s;
 
   // Read the index block
@@ -62,9 +62,9 @@ Status Table::Open(const Options& options,
     if (options.paranoid_checks) {
       opt.verify_checksums = true;
     }
-    s = ReadBlock(file, opt, footer.index_handle(), &contents);
+    s = ReadBlock(file, opt, footer.index_handle(), &contents);//读取index contents
     if (s.ok()) {
-      index_block = new Block(contents);
+      index_block = new Block(contents);//index block 读取完成
     }
   }
 
@@ -89,7 +89,7 @@ Status Table::Open(const Options& options,
 }
 
 void Table::ReadMeta(const Footer& footer) {
-  if (rep_->options.filter_policy == NULL) {
+  if (rep_->options.filter_policy == NULL) {//这个是过滤器策略，例如bloom过滤器
     return;  // Do not need any metadata
   }
 
@@ -100,13 +100,14 @@ void Table::ReadMeta(const Footer& footer) {
     opt.verify_checksums = true;
   }
   BlockContents contents;
+  //读取metaIndex block中的内容
   if (!ReadBlock(rep_->file, opt, footer.metaindex_handle(), &contents).ok()) {
     // Do not propagate errors since meta info is not needed for operation
     return;
   }
   Block* meta = new Block(contents);
 
-  Iterator* iter = meta->NewIterator(BytewiseComparator());
+  Iterator* iter = meta->NewIterator(BytewiseComparator());//遍历meta block 寻找对应的filter
   std::string key = "filter.";
   key.append(rep_->options.filter_policy->Name());
   iter->Seek(key);
@@ -117,7 +118,7 @@ void Table::ReadMeta(const Footer& footer) {
   delete meta;
 }
 
-void Table::ReadFilter(const Slice& filter_handle_value) {
+void Table::ReadFilter(const Slice& filter_handle_value) {//读取filter，参数是fiter的位置信息
   Slice v = filter_handle_value;
   BlockHandle filter_handle;
   if (!filter_handle.DecodeFrom(&v).ok()) {
@@ -131,7 +132,7 @@ void Table::ReadFilter(const Slice& filter_handle_value) {
     opt.verify_checksums = true;
   }
   BlockContents block;
-  if (!ReadBlock(rep_->file, opt, filter_handle, &block).ok()) {
+  if (!ReadBlock(rep_->file, opt, filter_handle, &block).ok()) {//读取对应的filter信息
     return;
   }
   if (block.heap_allocated) {

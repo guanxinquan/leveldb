@@ -92,7 +92,7 @@ char* EncodeVarint64(char* dst, uint64_t v) {
 void PutVarint64(std::string* dst, uint64_t v) {
   char buf[10];
   char* ptr = EncodeVarint64(buf, v);
-  dst->append(buf, ptr - buf);
+  dst->append(buf, ptr - buf);//将字符串追加到结尾（dst应当不满10byte）
 }
 
 void PutLengthPrefixedSlice(std::string* dst, const Slice& value) {

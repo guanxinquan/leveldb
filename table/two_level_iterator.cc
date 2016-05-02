@@ -66,7 +66,7 @@ class TwoLevelIterator: public Iterator {
   void* arg_;
   const ReadOptions options_;
   Status status_;
-  IteratorWrapper index_iter_;
+  IteratorWrapper index_iter_;//index iteration
   IteratorWrapper data_iter_; // May be NULL
   // If data_iter_ is non-NULL, then "data_block_handle_" holds the
   // "index_value" passed to block_function_ to create the data_iter_.
@@ -89,9 +89,9 @@ TwoLevelIterator::~TwoLevelIterator() {
 }
 
 void TwoLevelIterator::Seek(const Slice& target) {
-  index_iter_.Seek(target);
-  InitDataBlock();
-  if (data_iter_.iter() != NULL) data_iter_.Seek(target);
+  index_iter_.Seek(target);//找到index，并更新key
+  InitDataBlock();//初始化dataBlock
+  if (data_iter_.iter() != NULL) data_iter_.Seek(target);//查找对应的key
   SkipEmptyDataBlocksForward();
 }
 

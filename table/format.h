@@ -19,7 +19,7 @@ struct ReadOptions;
 
 // BlockHandle is a pointer to the extent of a file that stores a data
 // block or a meta block.
-class BlockHandle {
+class BlockHandle {//用于存储data block或者meta block的指针
  public:
   BlockHandle();
 
@@ -31,20 +31,20 @@ class BlockHandle {
   uint64_t size() const { return size_; }
   void set_size(uint64_t size) { size_ = size; }
 
-  void EncodeTo(std::string* dst) const;
-  Status DecodeFrom(Slice* input);
+  void EncodeTo(std::string* dst) const;//将两个偏移量编码转换为string
+  Status DecodeFrom(Slice* input);//解码出两个偏移量
 
   // Maximum encoding length of a BlockHandle
-  enum { kMaxEncodedLength = 10 + 10 };
+  enum { kMaxEncodedLength = 10 + 10 };//两个数字最大占用20bytes大小，每个占用10bytes
 
  private:
-  uint64_t offset_;
-  uint64_t size_;
+  uint64_t offset_;//数据的偏移量
+  uint64_t size_;//数据的大小
 };
 
 // Footer encapsulates the fixed information stored at the tail
 // end of every table file.
-class Footer {
+class Footer {//在每个table file的末尾都会有一个固定长度的Footer
  public:
   Footer() { }
 
@@ -67,21 +67,21 @@ class Footer {
   // Footer will always occupy exactly this many bytes.  It consists
   // of two block handles and a magic number.
   enum {
-    kEncodedLength = 2*BlockHandle::kMaxEncodedLength + 8
+    kEncodedLength = 2*BlockHandle::kMaxEncodedLength + 8 //两个blockHandler和一个魔数
   };
 
  private:
-  BlockHandle metaindex_handle_;
-  BlockHandle index_handle_;
+  BlockHandle metaindex_handle_;//meta index的起始位置和大小据说还没使用
+  BlockHandle index_handle_;//index block的起始位置和大小
 };
 
 // kTableMagicNumber was picked by running
 //    echo http://code.google.com/p/leveldb/ | sha1sum
 // and taking the leading 64 bits.
-static const uint64_t kTableMagicNumber = 0xdb4775248b80fb57ull;
+static const uint64_t kTableMagicNumber = 0xdb4775248b80fb57ull;//魔数
 
 // 1-byte type + 32-bit crc
-static const size_t kBlockTrailerSize = 5;
+static const size_t kBlockTrailerSize = 5;//每个block的尾部大小，由1byte类型信息+4byte crc校验和
 
 struct BlockContents {
   Slice data;           // Actual contents of data
@@ -91,10 +91,10 @@ struct BlockContents {
 
 // Read the block identified by "handle" from "file".  On failure
 // return non-OK.  On success fill *result and return OK.
-extern Status ReadBlock(RandomAccessFile* file,
-                        const ReadOptions& options,
-                        const BlockHandle& handle,
-                        BlockContents* result);
+extern Status ReadBlock(/*file是对应的文件*/RandomAccessFile* file,
+						/*options是读取选项*/const ReadOptions& options,
+                        /*handler是起始位置和偏移量*/const BlockHandle& handle,
+                        /*读取结果*/BlockContents* result);
 
 // Implementation details follow.  Clients should ignore,
 
