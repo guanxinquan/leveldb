@@ -44,14 +44,14 @@ Status Table::Open(const Options& options,
     return Status::Corruption("file is too short to be an sstable");
   }
 
-  char footer_space[Footer::kEncodedLength];//�ȶ�ȡFooter
+  char footer_space[Footer::kEncodedLength];//�ȶ�ȡFooter
   Slice footer_input;
   Status s = file->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
-                        &footer_input, footer_space);//��footer��ȡ����
+                        &footer_input, footer_space);//��footer��ȡ����
   if (!s.ok()) return s;
 
   Footer footer;
-  s = footer.DecodeFrom(&footer_input);//ת����Footer�����ֶ�
+  s = footer.DecodeFrom(&footer_input);//ת����Footer�����ֶ�
   if (!s.ok()) return s;
 
   // Read the index block
@@ -62,9 +62,9 @@ Status Table::Open(const Options& options,
     if (options.paranoid_checks) {
       opt.verify_checksums = true;
     }
-    s = ReadBlock(file, opt, footer.index_handle(), &contents);//��ȡindex contents
+    s = ReadBlock(file, opt, footer.index_handle(), &contents);//��ȡindex contents
     if (s.ok()) {
-      index_block = new Block(contents);//index block ��ȡ���
+      index_block = new Block(contents);//index block ��ȡ���
     }
   }
 
@@ -89,7 +89,7 @@ Status Table::Open(const Options& options,
 }
 
 void Table::ReadMeta(const Footer& footer) {
-  if (rep_->options.filter_policy == NULL) {//����ǹ��������ԣ�����bloom������
+  if (rep_->options.filter_policy == NULL) {//����ǹ��������ԣ�����bloom������
     return;  // Do not need any metadata
   }
 
@@ -100,14 +100,14 @@ void Table::ReadMeta(const Footer& footer) {
     opt.verify_checksums = true;
   }
   BlockContents contents;
-  //��ȡmetaIndex block�е�����
+  //��ȡmetaIndex block�е�����
   if (!ReadBlock(rep_->file, opt, footer.metaindex_handle(), &contents).ok()) {
     // Do not propagate errors since meta info is not needed for operation
     return;
   }
   Block* meta = new Block(contents);
 
-  Iterator* iter = meta->NewIterator(BytewiseComparator());//����meta block Ѱ�Ҷ�Ӧ��filter
+  Iterator* iter = meta->NewIterator(BytewiseComparator());//����meta block Ѱ�Ҷ�Ӧ��filter
   std::string key = "filter.";
   key.append(rep_->options.filter_policy->Name());
   iter->Seek(key);
@@ -118,7 +118,7 @@ void Table::ReadMeta(const Footer& footer) {
   delete meta;
 }
 
-void Table::ReadFilter(const Slice& filter_handle_value) {//��ȡfilter��������fiter��λ����Ϣ
+void Table::ReadFilter(const Slice& filter_handle_value) {//��ȡfilter��������fiter��λ����Ϣ
   Slice v = filter_handle_value;
   BlockHandle filter_handle;
   if (!filter_handle.DecodeFrom(&v).ok()) {
@@ -132,7 +132,7 @@ void Table::ReadFilter(const Slice& filter_handle_value) {//��ȡfilter��������fi
     opt.verify_checksums = true;
   }
   BlockContents block;
-  if (!ReadBlock(rep_->file, opt, filter_handle, &block).ok()) {//��ȡ��Ӧ��filter��Ϣ
+  if (!ReadBlock(rep_->file, opt, filter_handle, &block).ok()) {//��ȡ��Ӧ��filter��Ϣ
     return;
   }
   if (block.heap_allocated) {
@@ -166,33 +166,33 @@ Iterator* Table::BlockReader(void* arg,
                              const ReadOptions& options,
                              const Slice& index_value) {
   Table* table = reinterpret_cast<Table*>(arg);
-  Cache* block_cache = table->rep_->options.block_cache;
+  Cache* block_cache = table->rep_->options.block_cache;//判断是否在cache中
   Block* block = NULL;
   Cache::Handle* cache_handle = NULL;
 
   BlockHandle handle;
-  Slice input = index_value;
-  Status s = handle.DecodeFrom(&input);
+  Slice input = index_value;//index对应的值
+  Status s = handle.DecodeFrom(&input);//handle获取对应的值
   // We intentionally allow extra stuff in index_value so that we
   // can add more features in the future.
 
   if (s.ok()) {
-    BlockContents contents;
-    if (block_cache != NULL) {
-      char cache_key_buffer[16];
+    BlockContents contents;//block的内容
+    if (block_cache != NULL) {//在cache中存在数据
+      char cache_key_buffer[16];//存放cache id
       EncodeFixed64(cache_key_buffer, table->rep_->cache_id);
-      EncodeFixed64(cache_key_buffer+8, handle.offset());
-      Slice key(cache_key_buffer, sizeof(cache_key_buffer));
-      cache_handle = block_cache->Lookup(key);
-      if (cache_handle != NULL) {
-        block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
-      } else {
-        s = ReadBlock(table->rep_->file, options, handle, &contents);
+      EncodeFixed64(cache_key_buffer+8, handle.offset());//偏移量
+      Slice key(cache_key_buffer, sizeof(cache_key_buffer));//key = cacheId + offset
+      cache_handle = block_cache->Lookup(key);//cache的数据通过cacheId（tableNumber）+block的起始地址（offset）作为key
+      if (cache_handle != NULL) {//找到对应的block
+        block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));//获取对应的block
+      } else {//没找到对应的block
+        s = ReadBlock(table->rep_->file, options, handle, &contents);//读取对应的block
         if (s.ok()) {
           block = new Block(contents);
-          if (contents.cachable && options.fill_cache) {
+          if (contents.cachable && options.fill_cache) {//如果允许cache，那面就cache
             cache_handle = block_cache->Insert(
-                key, block, block->size(), &DeleteCachedBlock);
+                key, block, block->size(), &DeleteCachedBlock);//将对应的block放入cache中
           }
         }
       }
@@ -226,23 +226,23 @@ Iterator* Table::NewIterator(const ReadOptions& options) const {
 
 Status Table::InternalGet(const ReadOptions& options, const Slice& k,
                           void* arg,
-                          void (*saver)(void*, const Slice&, const Slice&)) {
+                          void (*saver)(void*, const Slice&, const Slice&)) {//后面两个参数是联合使用的
   Status s;
-  Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
-  iiter->Seek(k);
+  Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);//创建索引的遍历器
+  iiter->Seek(k);//通过索引查找key所在的物理块
   if (iiter->Valid()) {
-    Slice handle_value = iiter->value();
-    FilterBlockReader* filter = rep_->filter;
-    BlockHandle handle;
+    Slice handle_value = iiter->value();//找出对应块的block handle，冲block handle中可以获取offset和size
+    FilterBlockReader* filter = rep_->filter;//获取filter
+    BlockHandle handle;//这个handle就是要解压的handle_value
     if (filter != NULL &&
         handle.DecodeFrom(&handle_value).ok() &&
-        !filter->KeyMayMatch(handle.offset(), k)) {
+        !filter->KeyMayMatch(handle.offset(), k)) {//通过过滤器判断key在不在
       // Not found
-    } else {
-      Iterator* block_iter = BlockReader(this, options, iiter->value());
+    } else {//key在对应的block中
+      Iterator* block_iter = BlockReader(this, options, iiter->value());//从block中读取数据
       block_iter->Seek(k);
-      if (block_iter->Valid()) {
-        (*saver)(arg, block_iter->key(), block_iter->value());
+      if (block_iter->Valid()) {//找到数据
+        (*saver)(arg, block_iter->key(), block_iter->value());//将数据使用指定的函数处理
       }
       s = block_iter->status();
       delete block_iter;

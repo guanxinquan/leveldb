@@ -12,15 +12,15 @@ namespace leveldb {
 // See doc/table_format.txt for an explanation of the filter block format.
 
 // Generate new filter every 2KB of data
-static const size_t kFilterBaseLg = 11;//×î¿ªÊ¼µÄ1byteÓÃÓÚ´æ·Ålg(base)£¬Èç¹ûbaseÊÇ2kb£¬ÄÇÃæÕâ¸öÖµÊÇ11
-static const size_t kFilterBase = 1 << kFilterBaseLg;//Õâ¸öÊÇÊµ¼ÊµÄ×î´óÖµ2048
+static const size_t kFilterBaseLg = 11;//ï¿½î¿ªÊ¼ï¿½ï¿½1byteï¿½ï¿½ï¿½Ú´ï¿½ï¿½lg(base)ï¿½ï¿½ï¿½ï¿½ï¿½baseï¿½ï¿½2kbï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½11
+static const size_t kFilterBase = 1 << kFilterBaseLg;//ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½Êµï¿½ï¿½ï¿½ï¿½Öµ2048
 
 FilterBlockBuilder::FilterBlockBuilder(const FilterPolicy* policy)
     : policy_(policy) {
 }
 
-void FilterBlockBuilder::StartBlock(uint64_t block_offset) {//¿ªÊ¼block£¬¶ÔÓ¦µÄ²ÎÊıÊÇblockµÄÆ«ÒÆÁ¿£¨¼´µÚ¼¸¸öblock£©
-  uint64_t filter_index = (block_offset / kFilterBase);//ÓÉÓÚÒ»¸öfilter¿ÉÄÜ¶ÔÓ¦¶à¸öblock£¬Òò´Ë£¬ÕâÀïÊÇ¼ÆËãfilter indexµÄµØÖ·
+void FilterBlockBuilder::StartBlock(uint64_t block_offset) {//ï¿½ï¿½Ê¼blockï¿½ï¿½ï¿½ï¿½Ó¦ï¿½Ä²ï¿½ï¿½ï¿½ï¿½ï¿½blockï¿½ï¿½Æ«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú¼ï¿½ï¿½ï¿½blockï¿½ï¿½
+  uint64_t filter_index = (block_offset / kFilterBase);//ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½filterï¿½ï¿½ï¿½Ü¶ï¿½Ó¦ï¿½ï¿½ï¿½blockï¿½ï¿½ï¿½ï¿½Ë£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç¼ï¿½ï¿½ï¿½filter indexï¿½Äµï¿½Ö·
   assert(filter_index >= filter_offsets_.size());
   while (filter_index > filter_offsets_.size()) {
     GenerateFilter();
@@ -29,13 +29,13 @@ void FilterBlockBuilder::StartBlock(uint64_t block_offset) {//¿ªÊ¼block£¬¶ÔÓ¦µÄ²
 
 void FilterBlockBuilder::AddKey(const Slice& key) {
   Slice k = key;
-  start_.push_back(keys_.size());//ÏÈ½«keyµÄ´óĞ¡·ÅÈëstart
-  keys_.append(k.data(), k.size());//ÔÚ½«keyµÄÄÚÈİ·Åµ½keysÀïÃæ
+  start_.push_back(keys_.size());//ï¿½È½ï¿½keyï¿½Ä´ï¿½Ğ¡ï¿½ï¿½ï¿½ï¿½start
+  keys_.append(k.data(), k.size());//ï¿½Ú½ï¿½keyï¿½ï¿½ï¿½ï¿½ï¿½İ·Åµï¿½keysï¿½ï¿½ï¿½ï¿½
 }
 
 Slice FilterBlockBuilder::Finish() {
   if (!start_.empty()) {
-    GenerateFilter();//resultÖĞ´æ·ÅµÄÊÇfilterµÄ½á¹û
+    GenerateFilter();//resultï¿½Ğ´ï¿½Åµï¿½ï¿½ï¿½filterï¿½Ä½ï¿½ï¿½
   }
 
   // Append array of per-filter offsets
@@ -50,7 +50,7 @@ Slice FilterBlockBuilder::Finish() {
 }
 
 void FilterBlockBuilder::GenerateFilter() {
-  const size_t num_keys = start_.size();//keysµÄÊıÁ¿
+  const size_t num_keys = start_.size();//keysï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   if (num_keys == 0) {
     // Fast path if there are no keys for this filter
     filter_offsets_.push_back(result_.size());
@@ -58,8 +58,8 @@ void FilterBlockBuilder::GenerateFilter() {
   }
 
   // Make list of keys from flattened key structure
-  start_.push_back(keys_.size());  // Simplify length computation£¬½«keysµÄ×Ü³¤¶È·ÅÔÚÁËstartµÄ×îºó
-  tmp_keys_.resize(num_keys);//ÁÙÊ±keysµÄ´óĞ¡ÎªÏÈÇ°startµÄ´óĞ¡£¬»¹Ô­Õû¸ökeys
+  start_.push_back(keys_.size());  // Simplify length computationï¿½ï¿½ï¿½ï¿½keysï¿½ï¿½ï¿½Ü³ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½startï¿½ï¿½ï¿½ï¿½ï¿½
+  tmp_keys_.resize(num_keys);//ï¿½ï¿½Ê±keysï¿½Ä´ï¿½Ğ¡Îªï¿½ï¿½Ç°startï¿½Ä´ï¿½Ğ¡ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½keys
   for (size_t i = 0; i < num_keys; i++) {
     const char* base = keys_.data() + start_[i];
     size_t length = start_[i+1] - start_[i];
@@ -68,47 +68,47 @@ void FilterBlockBuilder::GenerateFilter() {
 
   // Generate filter for current set of keys and append to result_.
   filter_offsets_.push_back(result_.size());
-  policy_->CreateFilter(&tmp_keys_[0], static_cast<int>(num_keys), &result_);//½«¼ÆËã½á¹û·Åµ½ÁËresultÖĞ
+  policy_->CreateFilter(&tmp_keys_[0], static_cast<int>(num_keys), &result_);//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Åµï¿½ï¿½ï¿½resultï¿½ï¿½
 
   tmp_keys_.clear();
   keys_.clear();
   start_.clear();
 }
 
-//¶ÁÈ¡filterÏà¹ØĞÅÏ¢
-FilterBlockReader::FilterBlockReader(const FilterPolicy* policy,//filterÃû×Ö
-                                     const Slice& contents)//contentsÖĞ°üº¬filterĞÅÏ¢
+//ï¿½ï¿½È¡filterï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
+FilterBlockReader::FilterBlockReader(const FilterPolicy* policy,//filterï¿½ï¿½ï¿½ï¿½
+                                     const Slice& contents)//contentsï¿½Ğ°ï¿½ï¿½ï¿½filterï¿½ï¿½Ï¢
     : policy_(policy),
       data_(NULL),
       offset_(NULL),
       num_(0),
       base_lg_(0) {
   size_t n = contents.size();
-  //ÖÁÉÙÒªÓĞ1byte ´æ·Å»ùÊı£¬4byte´æ·Å´æ·Å
+  //ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½1byte ï¿½ï¿½Å»ï¿½ï¿½ï¿½ï¿½ï¿½4byteï¿½ï¿½Å´ï¿½ï¿½
   if (n < 5) return;  // 1 byte for base_lg_ and 4 for start of offset array
-  base_lg_ = contents[n-1];//base »ùÊıºÍÆğÊ¼µÄoffset array
-  uint32_t last_word = DecodeFixed32(contents.data() + n - 5);//×îºóÒ»¸öword£¬¾ÍÊÇÆğÊ¼arrayµÄÆ«ÒÆÁ¿
-  if (last_word > n - 5) return;//Õâ¸öÓ¦¸Ã±íÊ¾µÄÊÇÒ»¸ö¿Õ
-  data_ = contents.data();//Êı¾İµÈÓÚµ±Ç°µÄÊı¾İ
-  offset_ = data_ + last_word;//Æ«ÒÆÁ¿µÈÓÚµÚÒ»¸öfilter<0>³öÏÖµÄÎ»ÖÃ
-  num_ = (n - 5 - last_word) / 4;//filterµÄÊıÁ¿
+  base_lg_ = contents[n-1];//base ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½offset array
+  uint32_t last_word = DecodeFixed32(contents.data() + n - 5);//ï¿½ï¿½ï¿½Ò»ï¿½ï¿½wordï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼arrayï¿½ï¿½Æ«ï¿½ï¿½ï¿½ï¿½
+  if (last_word > n - 5) return;//ï¿½ï¿½ï¿½Ó¦ï¿½Ã±ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½
+  data_ = contents.data();//ï¿½ï¿½ï¿½İµï¿½ï¿½Úµï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+  offset_ = data_ + last_word;//Æ«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½Ò»ï¿½ï¿½filter<0>ï¿½ï¿½ï¿½Öµï¿½Î»ï¿½ï¿½
+  num_ = (n - 5 - last_word) / 4;//filterï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 }
 
-//ÅĞ¶ÏkeyÊÇ·ñÔÚ¹ıÂËÆ÷ÖĞ
+//è¿‡æ»¤å™¨
 bool FilterBlockReader::KeyMayMatch(uint64_t block_offset, const Slice& key) {
-  uint64_t index = block_offset >> base_lg_;//Õâ¸öÊÇµ¥Î»£¬Ä¬ÈÏÊÇ2KB
+  uint64_t index = block_offset >> base_lg_;//è®¡ç®—filterçš„èµ·å§‹ä½ç½®
   if (index < num_) {
-    uint32_t start = DecodeFixed32(offset_ + index*4);//¶ÔÓ¦filterµÄÆğÊ¼index
-    uint32_t limit = DecodeFixed32(offset_ + index*4 + 4);//¶ÔÓ¦filterµÄÏÂÒ»¸öindex
+    uint32_t start = DecodeFixed32(offset_ + index*4);//filterçš„èµ·å§‹ä½ç½®ï¼Œæ¯ä¸ªindexç”±4byteså›ºå®šé•¿åº¦æ„æˆ
+    uint32_t limit = DecodeFixed32(offset_ + index*4 + 4);//ç»ˆæ­¢ä½ç½®å°±æ˜¯ä¸‹ä¸€ä¸ªfilterçš„èµ·å§‹ä½ç½®
     if (start <= limit && limit <= static_cast<size_t>(offset_ - data_)) {
-      Slice filter = Slice(data_ + start, limit - start);
-      return policy_->KeyMayMatch(key, filter);
+      Slice filter = Slice(data_ + start, limit - start);//è·å–filter
+      return policy_->KeyMayMatch(key, filter);//åˆ¤æ–­keyæ˜¯å¦åœ¨filterä¸­
     } else if (start == limit) {
       // Empty filters do not match any keys
       return false;
     }
   }
-  return true;  // Errors are treated as potential matches
+  return true;  // Errors are treated as potential matches æ— æ³•ä»è¿‡æ»¤å™¨ä¸­åˆ¤æ–­ï¼Œé‚£é¢ç›´æ¥è¿”å›trueï¼Œéœ€è¦è¯»å–å¯¹åº”å—åˆ¤æ–­
 }
 
 }

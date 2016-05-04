@@ -14,13 +14,13 @@ namespace leveldb {
 
 class VersionSet;
 
-struct FileMetaData {
-  int refs;
-  int allowed_seeks;          // Seeks allowed until compaction
-  uint64_t number;
-  uint64_t file_size;         // File size in bytes
-  InternalKey smallest;       // Smallest internal key served by table
-  InternalKey largest;        // Largest internal key served by table
+struct FileMetaData {//Manifest元素的信息
+  int refs;//引用数
+  int allowed_seeks;          // Seeks allowed until compaction 在压缩前允许的最大seek数量
+  uint64_t number;	//编号
+  uint64_t file_size;         // File size in bytes 文件大小
+  InternalKey smallest;       // Smallest internal key served by table table中最小的key值
+  InternalKey largest;        // Largest internal key served by table table中最大的key值
 
   FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0) { }
 };

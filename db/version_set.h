@@ -134,7 +134,7 @@ class Version {
   Version* prev_;               // Previous version in linked list
   int refs_;                    // Number of live refs to this version
 
-  // List of files per level
+  // List of files per level 这是一个二维数组，第一维度为level级别（1-7），第二维度为对应的FileMetaData
   std::vector<FileMetaData*> files_[config::kNumLevels];
 
   // Next file to compact based on seek stats.

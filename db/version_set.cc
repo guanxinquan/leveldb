@@ -76,7 +76,7 @@ Version::~Version() {
 
 int FindFile(const InternalKeyComparator& icmp,
              const std::vector<FileMetaData*>& files,
-             const Slice& key) {
+             const Slice& key) {//使用二分查找法查找对应的files
   uint32_t left = 0;
   uint32_t right = files.size();
   while (left < right) {
@@ -257,14 +257,14 @@ struct Saver {
 };
 }
 static void SaveValue(void* arg, const Slice& ikey, const Slice& v) {
-  Saver* s = reinterpret_cast<Saver*>(arg);
+  Saver* s = reinterpret_cast<Saver*>(arg);//将参数转换为原始类型
   ParsedInternalKey parsed_key;
   if (!ParseInternalKey(ikey, &parsed_key)) {
     s->state = kCorrupt;
   } else {
-    if (s->ucmp->Compare(parsed_key.user_key, s->user_key) == 0) {
-      s->state = (parsed_key.type == kTypeValue) ? kFound : kDeleted;
-      if (s->state == kFound) {
+    if (s->ucmp->Compare(parsed_key.user_key, s->user_key) == 0) {//找到了对应的key
+      s->state = (parsed_key.type == kTypeValue) ? kFound : kDeleted;//判断是否删除
+      if (s->state == kFound) {//如果找到，赋值
         s->value->assign(v.data(), v.size());
       }
     }
@@ -340,47 +340,47 @@ Status Version::Get(const ReadOptions& options,
   std::vector<FileMetaData*> tmp;
   FileMetaData* tmp2;
   for (int level = 0; level < config::kNumLevels; level++) {
-    size_t num_files = files_[level].size();
+    size_t num_files = files_[level].size();//每个level的文件数是有限的，一共分为7个level
     if (num_files == 0) continue;
 
     // Get the list of files to search in this level
-    FileMetaData* const* files = &files_[level][0];
+    FileMetaData* const* files = &files_[level][0];//获取FileMetaData
     if (level == 0) {
       // Level-0 files may overlap each other.  Find all files that
       // overlap user_key and process them in order from newest to oldest.
-      tmp.reserve(num_files);
+      tmp.reserve(num_files);//分配空间
       for (uint32_t i = 0; i < num_files; i++) {
         FileMetaData* f = files[i];
         if (ucmp->Compare(user_key, f->smallest.user_key()) >= 0 &&
-            ucmp->Compare(user_key, f->largest.user_key()) <= 0) {
-          tmp.push_back(f);
+            ucmp->Compare(user_key, f->largest.user_key()) <= 0) {//判断要查找的key是否在当前fileMetaData中
+          tmp.push_back(f);//如果在，就将fileMetaData放入tmp中。
         }
       }
-      if (tmp.empty()) continue;
+      if (tmp.empty()) continue;//如果tmp中没有对应的key，继续下一个级别的处理
 
-      std::sort(tmp.begin(), tmp.end(), NewestFirst);
-      files = &tmp[0];
-      num_files = tmp.size();
-    } else {
+      std::sort(tmp.begin(), tmp.end(), NewestFirst);//按照fileMetaData中的number排序，number越小，说明越新
+      files = &tmp[0];//files从0开始
+      num_files = tmp.size();//num_files记录了匹配的文件数
+    } else {//其他level
       // Binary search to find earliest index whose largest key >= ikey.
-      uint32_t index = FindFile(vset_->icmp_, files_[level], ikey);
-      if (index >= num_files) {
+      uint32_t index = FindFile(vset_->icmp_, files_[level], ikey);//查找largest比ikey还要大的file，二分查找，表示files内部是有序的
+      if (index >= num_files) {//不存在
         files = NULL;
         num_files = 0;
-      } else {
-        tmp2 = files[index];
-        if (ucmp->Compare(user_key, tmp2->smallest.user_key()) < 0) {
+      } else {//存在
+        tmp2 = files[index];//temp2存放对应的fileMetaData
+        if (ucmp->Compare(user_key, tmp2->smallest.user_key()) < 0) {//如果user_key比最小的小，那面说明key不在这个fileMetaData中
           // All of "tmp2" is past any data for user_key
           files = NULL;
           num_files = 0;
-        } else {
+        } else {//当前区间覆盖了key的区间
           files = &tmp2;
           num_files = 1;
         }
       }
     }
 
-    for (uint32_t i = 0; i < num_files; ++i) {
+    for (uint32_t i = 0; i < num_files; ++i) {//遍历找到的区间
       if (last_file_read != NULL && stats->seek_file == NULL) {
         // We have had more than one seek for this read.  Charge the 1st file.
         stats->seek_file = last_file_read;
@@ -388,7 +388,7 @@ Status Version::Get(const ReadOptions& options,
       }
 
       FileMetaData* f = files[i];
-      last_file_read = f;
+      last_file_read = f;//最后查询的file
       last_file_read_level = level;
 
       Saver saver;
@@ -397,18 +397,18 @@ Status Version::Get(const ReadOptions& options,
       saver.user_key = user_key;
       saver.value = value;
       s = vset_->table_cache_->Get(options, f->number, f->file_size,
-                                   ikey, &saver, SaveValue);
-      if (!s.ok()) {
+                                   ikey, &saver, SaveValue);//先通过cache查询，第五个和第六个参数联合使用，第五个参数是一个值对象，第六个参数是函数指针
+      if (!s.ok()) {//出现异常，直接返回
         return s;
       }
-      switch (saver.state) {
+      switch (saver.state) {//有如下几种状态，没找到，找到，已删除和异常
         case kNotFound:
-          break;      // Keep searching in other files
+          break;      // Keep searching in other files，继续在其他文件中搜寻
         case kFound:
-          return s;
+          return s;//找到直接返回
         case kDeleted:
           s = Status::NotFound(Slice());  // Use empty error message for speed
-          return s;
+          return s;//已经删除 直接返回
         case kCorrupt:
           s = Status::Corruption("corrupted key for ", user_key);
           return s;
