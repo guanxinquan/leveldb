@@ -15,6 +15,7 @@ namespace leveldb {
 static const size_t kFilterBaseLg = 11;//表示2kb（偏移11位）
 static const size_t kFilterBase = 1 << kFilterBaseLg;//表示2kb
 
+
 FilterBlockBuilder::FilterBlockBuilder(const FilterPolicy* policy)
     : policy_(policy) {
 }
@@ -36,6 +37,7 @@ void FilterBlockBuilder::AddKey(const Slice& key) {
 Slice FilterBlockBuilder::Finish() {//完成当前builder
   if (!start_.empty()) {//生成最后的filter
     GenerateFilter();//result
+
   }
 
   // Append array of per-filter offsets
@@ -94,21 +96,21 @@ FilterBlockReader::FilterBlockReader(const FilterPolicy* policy,//filter���
   num_ = (n - 5 - last_word) / 4;//filter������
 }
 
-//�ж�key�Ƿ��ڹ�������
+//过滤器
 bool FilterBlockReader::KeyMayMatch(uint64_t block_offset, const Slice& key) {
-  uint64_t index = block_offset >> base_lg_;//����ǵ�λ��Ĭ����2KB
+  uint64_t index = block_offset >> base_lg_;//计算filter的起始位置
   if (index < num_) {
-    uint32_t start = DecodeFixed32(offset_ + index*4);//��Ӧfilter����ʼindex
-    uint32_t limit = DecodeFixed32(offset_ + index*4 + 4);//��Ӧfilter����һ��index
+    uint32_t start = DecodeFixed32(offset_ + index*4);//filter的起始位置，每个index由4bytes固定长度构成
+    uint32_t limit = DecodeFixed32(offset_ + index*4 + 4);//终止位置就是下一个filter的起始位置
     if (start <= limit && limit <= static_cast<size_t>(offset_ - data_)) {
-      Slice filter = Slice(data_ + start, limit - start);
-      return policy_->KeyMayMatch(key, filter);
+      Slice filter = Slice(data_ + start, limit - start);//获取filter
+      return policy_->KeyMayMatch(key, filter);//判断key是否在filter中
     } else if (start == limit) {
       // Empty filters do not match any keys
       return false;
     }
   }
-  return true;  // Errors are treated as potential matches
+  return true;  // Errors are treated as potential matches 无法从过滤器中判断，那面直接返回true，需要读取对应块判断
 }
 
 }

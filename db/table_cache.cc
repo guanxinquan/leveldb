@@ -43,37 +43,37 @@ TableCache::~TableCache() {
 }
 
 Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
-                             Cache::Handle** handle) {
+                             Cache::Handle** handle) {//file number是一个序号，file_size是大小，handle是对应的table
   Status s;
   char buf[sizeof(file_number)];
-  EncodeFixed64(buf, file_number);
-  Slice key(buf, sizeof(buf));
-  *handle = cache_->Lookup(key);
-  if (*handle == NULL) {
-    std::string fname = TableFileName(dbname_, file_number);
+  EncodeFixed64(buf, file_number);//将file_number转换为char数组
+  Slice key(buf, sizeof(buf));//key就是file number
+  *handle = cache_->Lookup(key);//没找到对应的key，返回null，否者返回handle
+  if (*handle == NULL) {//没找到，就要找具体的文件
+    std::string fname = TableFileName(dbname_, file_number);//找文件名字，实际文件名字由数据库名字+file_number+"ldb"组成
     RandomAccessFile* file = NULL;
     Table* table = NULL;
-    s = env_->NewRandomAccessFile(fname, &file);
-    if (!s.ok()) {
-      std::string old_fname = SSTTableFileName(dbname_, file_number);
+    s = env_->NewRandomAccessFile(fname, &file);//读取文件
+    if (!s.ok()) {//如果读取文件失败，可以尝试使用老的文件名字重新读取文件
+      std::string old_fname = SSTTableFileName(dbname_, file_number);//数据库名字+file_number+'sst'
       if (env_->NewRandomAccessFile(old_fname, &file).ok()) {
         s = Status::OK();
       }
     }
     if (s.ok()) {
-      s = Table::Open(*options_, file, file_size, &table);
+      s = Table::Open(*options_, file, file_size, &table);//读取出文件的footer、index和filter
     }
 
-    if (!s.ok()) {
+    if (!s.ok()) {//如果读取失败
       assert(table == NULL);
       delete file;
       // We do not cache error results so that if the error is transient,
       // or somebody repairs the file, we recover automatically.
-    } else {
+    } else {//读取成功就加入cache
       TableAndFile* tf = new TableAndFile;
       tf->file = file;
       tf->table = table;
-      *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
+      *handle = cache_->Insert(key, tf, 1, &DeleteEntry);//cache中添加key是number，tf是file和table，
     }
   }
   return s;
@@ -107,13 +107,13 @@ Status TableCache::Get(const ReadOptions& options,
                        uint64_t file_size,
                        const Slice& k,
                        void* arg,
-                       void (*saver)(void*, const Slice&, const Slice&)) {
+                       void (*saver)(void*, const Slice&, const Slice&)) {//最后两个参数是联合一起使用，倒数第二个是一个值，最后一个是一个函数指针，操作这个值（参考version_edit的get方法
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
+  Status s = FindTable(file_number, file_size, &handle);//获取table
   if (s.ok()) {
-    Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
-    s = t->InternalGet(options, k, arg, saver);
-    cache_->Release(handle);
+    Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;//获取table
+    s = t->InternalGet(options, k, arg, saver);//从table内部获取数据
+    cache_->Release(handle);//释放handle
   }
   return s;
 }

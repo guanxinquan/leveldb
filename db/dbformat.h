@@ -174,14 +174,14 @@ inline int InternalKeyComparator::Compare(
 }
 
 inline bool ParseInternalKey(const Slice& internal_key,
-                             ParsedInternalKey* result) {
+                             ParsedInternalKey* result) {//分析内部key
   const size_t n = internal_key.size();
   if (n < 8) return false;
-  uint64_t num = DecodeFixed64(internal_key.data() + n - 8);
+  uint64_t num = DecodeFixed64(internal_key.data() + n - 8);//获取数据的最后8个byte，int64数据，1byte用于表示类型（是否删除），7byte表示seq
   unsigned char c = num & 0xff;
-  result->sequence = num >> 8;
-  result->type = static_cast<ValueType>(c);
-  result->user_key = Slice(internal_key.data(), n - 8);
+  result->sequence = num >> 8;//获取seq
+  result->type = static_cast<ValueType>(c);//获取类型（是否删除）
+  result->user_key = Slice(internal_key.data(), n - 8);//获取到数据
   return (c <= static_cast<unsigned char>(kTypeValue));
 }
 
