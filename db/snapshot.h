@@ -14,9 +14,9 @@ class SnapshotList;
 
 // Snapshots are kept in a doubly-linked list in the DB.
 // Each SnapshotImpl corresponds to a particular sequence number.
-class SnapshotImpl : public Snapshot {
+class SnapshotImpl : public Snapshot {//双向链表中的元素
  public:
-  SequenceNumber number_;  // const after creation
+  SequenceNumber number_;  // const after creation 这里只有一个number
 
  private:
   friend class SnapshotList;
@@ -28,7 +28,7 @@ class SnapshotImpl : public Snapshot {
   SnapshotList* list_;                 // just for sanity checks
 };
 
-class SnapshotList {
+class SnapshotList {//对应的双向链表
  public:
   SnapshotList() {
     list_.prev_ = &list_;
@@ -59,7 +59,7 @@ class SnapshotList {
 
  private:
   // Dummy head of doubly-linked list of snapshots
-  SnapshotImpl list_;
+  SnapshotImpl list_;//双向链表的哨兵
 };
 
 }  // namespace leveldb

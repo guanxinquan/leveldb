@@ -324,8 +324,8 @@ Status Version::Get(const ReadOptions& options,
                     const LookupKey& k,
                     std::string* value,
                     GetStats* stats) {
-  Slice ikey = k.internal_key();
-  Slice user_key = k.user_key();
+  Slice ikey = k.internal_key();//包含key和后面的8byte的seq和type（是否删除）
+  Slice user_key = k.user_key();//但存的是用户key
   const Comparator* ucmp = vset_->icmp_.user_comparator();
   Status s;
 
@@ -349,7 +349,7 @@ Status Version::Get(const ReadOptions& options,
       // Level-0 files may overlap each other.  Find all files that
       // overlap user_key and process them in order from newest to oldest.
       tmp.reserve(num_files);//分配空间
-      for (uint32_t i = 0; i < num_files; i++) {
+      for (uint32_t i = 0; i < num_files; i++) {//level0要每个都查看
         FileMetaData* f = files[i];
         if (ucmp->Compare(user_key, f->smallest.user_key()) >= 0 &&
             ucmp->Compare(user_key, f->largest.user_key()) <= 0) {//判断要查找的key是否在当前fileMetaData中
@@ -1052,7 +1052,7 @@ void VersionSet::MarkFileNumberUsed(uint64_t number) {
   }
 }
 
-void VersionSet::Finalize(Version* v) {
+void VersionSet::Finalize(Version* v) {//提前计算最适合压缩的level
   // Precomputed best level for next compaction
   int best_level = -1;
   double best_score = -1;
@@ -1062,31 +1062,31 @@ void VersionSet::Finalize(Version* v) {
     if (level == 0) {
       // We treat level-0 specially by bounding the number of files
       // instead of number of bytes for two reasons:
-      //
+      // level0使用计算文件数量进行判断是否需要压缩
       // (1) With larger write-buffer sizes, it is nice not to do too
       // many level-0 compactions.
       //
       // (2) The files in level-0 are merged on every read and
       // therefore we wish to avoid too many files when the individual
       // file size is small (perhaps because of a small write-buffer
-      // setting, or very high compression ratios, or lots of
+      // setting, or very high compression ratios, ts of
       // overwrites/deletions).
       score = v->files_[level].size() /
-          static_cast<double>(config::kL0_CompactionTrigger);
+          static_cast<double>(config::kL0_CompactionTrigger);//默认情况下，level0只要有四个文件，即被认为可以压缩 l
     } else {
-      // Compute the ratio of current size to size limit.
+      // Compute the ratio of current size to size limit. 只有超过一定大小的level才被压缩，不同level按照10的幂数计算
       const uint64_t level_bytes = TotalFileSize(v->files_[level]);
       score = static_cast<double>(level_bytes) / MaxBytesForLevel(level);
     }
 
-    if (score > best_score) {
+    if (score > best_score) {//选择循环中的最大值，如果当前值超过先前算的最大值，那么当前值替换最大值
       best_level = level;
       best_score = score;
     }
   }
 
-  v->compaction_level_ = best_level;
-  v->compaction_score_ = best_score;
+  v->compaction_level_ = best_level;//对应的level
+  v->compaction_score_ = best_score;//对应的score
 }
 
 Status VersionSet::WriteSnapshot(log::Writer* log) {
@@ -1278,30 +1278,31 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   return result;
 }
 
-Compaction* VersionSet::PickCompaction() {
+Compaction* VersionSet::PickCompaction() {//判断压缩哪些
   Compaction* c;
   int level;
 
   // We prefer compactions triggered by too much data in a level over
   // the compactions triggered by seeks.
-  const bool size_compaction = (current_->compaction_score_ >= 1);
-  const bool seek_compaction = (current_->file_to_compact_ != NULL);
+  const bool size_compaction = (current_->compaction_score_ >= 1);//这个是计算出来的值在version的final中（level0级别的文件过多，或者其它level各自的大小过大）
+  const bool seek_compaction = (current_->file_to_compact_ != NULL);//这个是对应文件访问次数很多此，需要压缩更新
   if (size_compaction) {
-    level = current_->compaction_level_;
+    level = current_->compaction_level_;//需要压缩的level
     assert(level >= 0);
-    assert(level+1 < config::kNumLevels);
+    assert(level+1 < config::kNumLevels);//不会判断最后一个level（第七层）
     c = new Compaction(level);
 
     // Pick the first file that comes after compact_pointer_[level]
     for (size_t i = 0; i < current_->files_[level].size(); i++) {
       FileMetaData* f = current_->files_[level][i];
       if (compact_pointer_[level].empty() ||
-          icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
-        c->inputs_[0].push_back(f);
+          icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {//如果当前level的压缩最大key值（compact_pointer，表示上次当前level压缩的最大值）或者当前比对的file的最大值大于上次的那个值，设置input
+        c->inputs_[0].push_back(f);//设置压缩的起始文件
         break;
       }
     }
-    if (c->inputs_[0].empty()) {
+    if (c->inputs_[0].empty()) {//如果没有，说明上次的key是最大key，取当前第0个
+
       // Wrap-around to the beginning of the key space
       c->inputs_[0].push_back(current_->files_[level][0]);
     }

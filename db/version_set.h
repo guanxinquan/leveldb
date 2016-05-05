@@ -56,7 +56,7 @@ extern bool SomeFileOverlapsRange(
     const Slice* smallest_user_key,
     const Slice* largest_user_key);
 
-class Version {
+class Version {//表示sst文件的集合，是循环双向链表的元素
  public:
   // Append to *iters a sequence of iterators that will
   // yield the contents of this Version when merged together.
@@ -129,23 +129,23 @@ class Version {
                           void* arg,
                           bool (*func)(void*, int, FileMetaData*));
 
-  VersionSet* vset_;            // VersionSet to which this Version belongs
-  Version* next_;               // Next version in linked list
-  Version* prev_;               // Previous version in linked list
-  int refs_;                    // Number of live refs to this version
+  VersionSet* vset_;            // VersionSet to which this Version belongs 当前的version属于哪个vset
+  Version* next_;               // Next version in linked list 在这个versionset中的下一个version
+  Version* prev_;               // Previous version in linked list 在这个version set中的前一个version
+  int refs_;                    // Number of live refs to this version 引用数量
 
   // List of files per level 这是一个二维数组，第一维度为level级别（1-7），第二维度为对应的FileMetaData
-  std::vector<FileMetaData*> files_[config::kNumLevels];
+  std::vector<FileMetaData*> files_[config::kNumLevels];//sst文件的集合
 
   // Next file to compact based on seek stats.
-  FileMetaData* file_to_compact_;
-  int file_to_compact_level_;
+  FileMetaData* file_to_compact_;//如果对于某个file搜索的次数超过限定值FileMetaData.allowed_seeks的大小降为0，那么对应的file需要压缩 update方法决定的
+  int file_to_compact_level_;//这个压缩文件存在的级别
 
   // Level that should be compacted next and its compaction score.
   // Score < 1 means compaction is not strictly needed.  These fields
   // are initialized by Finalize().
-  double compaction_score_;
-  int compaction_level_;
+  double compaction_score_;//表示下一次压缩是否是有必要的，如果值大于1表示有必要（这个值在final中计算，level0通过文件个数除以4计算，其它level通过level数据总大小除以level值（10的幂数）
+  int compaction_level_;//下次要压缩的级别
 
   explicit Version(VersionSet* vset)
       : vset_(vset), next_(this), prev_(this), refs_(0),
@@ -162,7 +162,7 @@ class Version {
   void operator=(const Version&);
 };
 
-class VersionSet {
+class VersionSet {//循环双向链表的集合，存放Version
  public:
   VersionSet(const std::string& dbname,
              const Options* options,
@@ -295,21 +295,21 @@ class VersionSet {
   void AppendVersion(Version* v);
 
   Env* const env_;
-  const std::string dbname_;
+  const std::string dbname_;//db的名字
   const Options* const options_;
   TableCache* const table_cache_;
   const InternalKeyComparator icmp_;
   uint64_t next_file_number_;
-  uint64_t manifest_file_number_;
-  uint64_t last_sequence_;
+  uint64_t manifest_file_number_;//manifest file number
+  uint64_t last_sequence_;//最后的seq
   uint64_t log_number_;
   uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
 
   // Opened lazily
   WritableFile* descriptor_file_;
   log::Writer* descriptor_log_;
-  Version dummy_versions_;  // Head of circular doubly-linked list of versions.
-  Version* current_;        // == dummy_versions_.prev_
+  Version dummy_versions_;  // Head of circular doubly-linked list of versions. 这是双向循环列表的哨兵
+  Version* current_;        // == dummy_versions_.prev_ 最新的version
 
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
@@ -368,9 +368,9 @@ class Compaction {
 
   explicit Compaction(int level);
 
-  int level_;
-  uint64_t max_output_file_size_;
-  Version* input_version_;
+  int level_;//在哪个级别上
+  uint64_t max_output_file_size_;//最大输出文件大小
+  Version* input_version_;//输入的version
   VersionEdit edit_;
 
   // Each compaction reads inputs from "level_" and "level_+1"

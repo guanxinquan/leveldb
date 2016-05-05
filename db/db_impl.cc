@@ -1119,7 +1119,7 @@ Status DBImpl::Get(const ReadOptions& options,
 
   MemTable* mem = mem_;
   MemTable* imm = imm_;
-  Version* current = versions_->current();
+  Version* current = versions_->current();//获取当前的version
   mem->Ref();
   if (imm != NULL) imm->Ref();
   current->Ref();

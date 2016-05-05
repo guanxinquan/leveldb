@@ -119,16 +119,16 @@ class DBImpl : public DB {
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   // Constant after construction
-  Env* const env_;
-  const InternalKeyComparator internal_comparator_;
-  const InternalFilterPolicy internal_filter_policy_;
+  Env* const env_;//env
+  const InternalKeyComparator internal_comparator_;//比较internalKey的比较器
+  const InternalFilterPolicy internal_filter_policy_;//filter
   const Options options_;  // options_.comparator == &internal_comparator_
   bool owns_info_log_;
   bool owns_cache_;
-  const std::string dbname_;
+  const std::string dbname_;//db的名字
 
   // table_cache_ provides its own synchronization
-  TableCache* table_cache_;
+  TableCache* table_cache_;//table cache就是缓存table
 
   // Lock over the persistent DB state.  Non-NULL iff successfully acquired.
   FileLock* db_lock_;
@@ -137,8 +137,8 @@ class DBImpl : public DB {
   port::Mutex mutex_;
   port::AtomicPointer shutting_down_;
   port::CondVar bg_cv_;          // Signalled when background work finishes
-  MemTable* mem_;
-  MemTable* imm_;                // Memtable being compacted
+  MemTable* mem_;				//memTable正在使用的
+  MemTable* imm_;                // Memtable being compacted 正在压缩的memTable
   port::AtomicPointer has_imm_;  // So bg thread can detect non-NULL imm_
   WritableFile* logfile_;
   uint64_t logfile_number_;
@@ -168,7 +168,7 @@ class DBImpl : public DB {
   };
   ManualCompaction* manual_compaction_;
 
-  VersionSet* versions_;
+  VersionSet* versions_;//版本
 
   // Have we encountered a background error in paranoid mode?
   Status bg_error_;

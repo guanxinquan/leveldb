@@ -211,9 +211,9 @@ class LookupKey {
   //                                    <-- end_
   // The array is a suitable MemTable key.
   // The suffix starting with "userkey" can be used as an InternalKey.
-  const char* start_;
-  const char* kstart_;
-  const char* end_;
+  const char* start_;//起始位置
+  const char* kstart_;//key的起始位置
+  const char* end_;//整个编码的结尾位置
   char space_[200];      // Avoid allocation for short keys
 
   // No copying allowed

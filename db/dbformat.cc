@@ -119,22 +119,22 @@ bool InternalFilterPolicy::KeyMayMatch(const Slice& key, const Slice& f) const {
 }
 
 LookupKey::LookupKey(const Slice& user_key, SequenceNumber s) {
-  size_t usize = user_key.size();
-  size_t needed = usize + 13;  // A conservative estimate
+  size_t usize = user_key.size();//用户key的大小
+  size_t needed = usize + 13;  // A conservative estimate 存储的大小要增加13（4bytes长度，8bytes seq＋type）
   char* dst;
-  if (needed <= sizeof(space_)) {
+  if (needed <= sizeof(space_)) {//不需要分配，这个默认字符串长度为200
     dst = space_;
   } else {
-    dst = new char[needed];
+    dst = new char[needed];//过长，要重新分配空间
   }
-  start_ = dst;
-  dst = EncodeVarint32(dst, usize + 8);
-  kstart_ = dst;
-  memcpy(dst, user_key.data(), usize);
-  dst += usize;
-  EncodeFixed64(dst, PackSequenceAndType(s, kValueTypeForSeek));
+  start_ = dst;//起始的为dest
+  dst = EncodeVarint32(dst, usize + 8);//长度编码放在最前面，编码长度为key的长度加8
+  kstart_ = dst;//内容的起始
+  memcpy(dst, user_key.data(), usize);//拷贝内容到dest中
+  dst += usize;//dst到达内容的结尾
+  EncodeFixed64(dst, PackSequenceAndType(s, kValueTypeForSeek));//8byte中末尾1byte表示是否删除，其余7bytes表示s的低7bytes
   dst += 8;
-  end_ = dst;
+  end_ = dst;//末尾
 }
 
 }  // namespace leveldb
