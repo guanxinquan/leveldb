@@ -20,7 +20,7 @@ class Snapshot;
 // sequence of key,value pairs.  Each block may be compressed before
 // being stored in a file.  The following enum describes which
 // compression method (if any) is used to compress a block.
-enum CompressionType {//blockÔÚ´æ´¢µ½ÎÄ¼şÖ®Ç°£¬ÓĞ¿ÉÄÜ»áÊ¹ÓÃÑ¹ËõËã·¨£¬Ä¿Ç°ÅäÖÃÖ»ÓĞÁ½ÖÖ£¬Ò»ÖÖÊÇ²»Ñ¹Ëõ£¬Ò»ÖÖÊÇsnappy
+enum CompressionType {//blockå‹ç¼©ç®—æ³•ï¼Œé»˜è®¤æ˜¯snappy
   // NOTE: do not change the values of existing entries, as these are
   // part of the persistent format on disk.
   kNoCompression     = 0x0,
@@ -33,7 +33,7 @@ struct Options {
   // Parameters that affect behavior
 
   // Comparator used to define the order of keys in the table.
-  // Default: a comparator that uses lexicographic byte-wise ordering Ä¬ÈÏ±È½ÏÆ÷Ê¹ÓÃ×Öµä´ÎĞò
+  // Default: a comparator that uses lexicographic byte-wise ordering
   //
   // REQUIRES: The client must ensure that the comparator supplied
   // here has the same name and orders keys *exactly* the same as the
@@ -46,7 +46,7 @@ struct Options {
 
   // If true, an error is raised if the database already exists.
   // Default: false
-  bool error_if_exists;//Èç¹ûÊı¾İ¿âÒÑ¾­´æÔÚ£¬»áÅ×³öÒ»¸öÒì³£
+  bool error_if_exists;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½İ¿ï¿½ï¿½Ñ¾ï¿½ï¿½ï¿½ï¿½Ú£ï¿½ï¿½ï¿½ï¿½×³ï¿½Ò»ï¿½ï¿½ï¿½ì³£
 
   // If true, the implementation will do aggressive checking of the
   // data it is processing and will stop early if it detects any
@@ -80,7 +80,7 @@ struct Options {
   // the next time the database is opened.
   //
   // Default: 4MB
-  size_t write_buffer_size;//ÄÚ´æÖĞ µÄÊı¾İ´óĞ¡£¨ÕâĞ©Êı¾İÍ¨¹ıÒ»¸öunsorted log´æ·ÅÔÚ´ÅÅÌÉÏ£©£¬Ìá¸ß´óĞ¡ÄÜÌá¸ßĞÔÄÜ£¬µ«ÊÇ»áÓ°Ïì·şÎñ»Ø¸´ĞÔÄÜ¡£
+  size_t write_buffer_size;//ï¿½Ú´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½İ´ï¿½Ğ¡ï¿½ï¿½ï¿½ï¿½Ğ©ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½Ò»ï¿½ï¿½unsorted logï¿½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½Ï£ï¿½ï¿½ï¿½ï¿½ï¿½ß´ï¿½Ğ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü£ï¿½ï¿½ï¿½ï¿½Ç»ï¿½Ó°ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½Ü¡ï¿½
 
   // Number of open files that can be used by the DB.  You may need to
   // increase this if your database has a large working set (budget

@@ -12,94 +12,94 @@ namespace leveldb {
 // See doc/table_format.txt for an explanation of the filter block format.
 
 // Generate new filter every 2KB of data
-static const size_t kFilterBaseLg = 11;//×î¿ªÊ¼µÄ1byteÓÃÓÚ´æ·Ålg(base)£¬Èç¹ûbaseÊÇ2kb£¬ÄÇÃæÕâ¸öÖµÊÇ11
-static const size_t kFilterBase = 1 << kFilterBaseLg;//Õâ¸öÊÇÊµ¼ÊµÄ×î´óÖµ2048
+static const size_t kFilterBaseLg = 11;//è¡¨ç¤º2kbï¼ˆåç§»11ä½ï¼‰
+static const size_t kFilterBase = 1 << kFilterBaseLg;//è¡¨ç¤º2kb
 
 FilterBlockBuilder::FilterBlockBuilder(const FilterPolicy* policy)
     : policy_(policy) {
 }
 
-void FilterBlockBuilder::StartBlock(uint64_t block_offset) {//¿ªÊ¼block£¬¶ÔÓ¦µÄ²ÎÊıÊÇblockµÄÆ«ÒÆÁ¿£¨¼´µÚ¼¸¸öblock£©
-  uint64_t filter_index = (block_offset / kFilterBase);//ÓÉÓÚÒ»¸öfilter¿ÉÄÜ¶ÔÓ¦¶à¸öblock£¬Òò´Ë£¬ÕâÀïÊÇ¼ÆËãfilter indexµÄµØÖ·
+void FilterBlockBuilder::StartBlock(uint64_t block_offset) {//å¼€å§‹ä¸€ä¸ªæ–°çš„block
+  uint64_t filter_index = (block_offset / kFilterBase);//è®¡ç®—å½“å‰çš„blockå¯¹åº”çš„filter_index
   assert(filter_index >= filter_offsets_.size());
-  while (filter_index > filter_offsets_.size()) {
+  while (filter_index > filter_offsets_.size()) {//è®¡ç®—å½“å‰filterä¹‹å‰çš„æ‰€æœ‰filter
     GenerateFilter();
   }
 }
 
 void FilterBlockBuilder::AddKey(const Slice& key) {
   Slice k = key;
-  start_.push_back(keys_.size());//ÏÈ½«keyµÄ´óĞ¡·ÅÈëstart
-  keys_.append(k.data(), k.size());//ÔÚ½«keyµÄÄÚÈİ·Åµ½keysÀïÃæ
+  start_.push_back(keys_.size());//æ”¾å…¥key size
+  keys_.append(k.data(), k.size());//keyæ•°æ®è¿½åŠ åˆ°keysä¸­
 }
 
-Slice FilterBlockBuilder::Finish() {
-  if (!start_.empty()) {
-    GenerateFilter();//resultÖĞ´æ·ÅµÄÊÇfilterµÄ½á¹û
+Slice FilterBlockBuilder::Finish() {//å®Œæˆå½“å‰builder
+  if (!start_.empty()) {//ç”Ÿæˆæœ€åçš„filter
+    GenerateFilter();//result
   }
 
   // Append array of per-filter offsets
   const uint32_t array_offset = result_.size();
-  for (size_t i = 0; i < filter_offsets_.size(); i++) {
+  for (size_t i = 0; i < filter_offsets_.size(); i++) {//å°†filterçš„offsetsæ”¾å…¥åˆ°æ•°æ®ä¸­ï¼ˆå›ºå®š32é•¿åº¦ï¼‰
     PutFixed32(&result_, filter_offsets_[i]);
   }
 
-  PutFixed32(&result_, array_offset);
-  result_.push_back(kFilterBaseLg);  // Save encoding parameter in result
+  PutFixed32(&result_, array_offset);//å­˜æ”¾é•¿åº¦ï¼ˆarray offsetï¼‰
+  result_.push_back(kFilterBaseLg);  // Save encoding parameter in result å­˜æ”¾åŸºæ•°ï¼Œé»˜è®¤æ˜¯11ï¼ˆç›¸å½“äº2kbæœ‰ä¸€ä¸ªfilterï¼‰
   return Slice(result_);
 }
 
 void FilterBlockBuilder::GenerateFilter() {
-  const size_t num_keys = start_.size();//keysµÄÊıÁ¿
-  if (num_keys == 0) {
+  const size_t num_keys = start_.size();//keysæ•°é‡
+  if (num_keys == 0) {//å¦‚æœå½“å‰filteræ²¡æœ‰key
     // Fast path if there are no keys for this filter
-    filter_offsets_.push_back(result_.size());
+    filter_offsets_.push_back(result_.size());//ç›´æ¥å°†resultçš„å¤§å°æ”¾å…¥filter offsets
     return;
   }
 
   // Make list of keys from flattened key structure
-  start_.push_back(keys_.size());  // Simplify length computation£¬½«keysµÄ×Ü³¤¶È·ÅÔÚÁËstartµÄ×îºó
-  tmp_keys_.resize(num_keys);//ÁÙÊ±keysµÄ´óĞ¡ÎªÏÈÇ°startµÄ´óĞ¡£¬»¹Ô­Õû¸ökeys
+  start_.push_back(keys_.size());  // Simplify length computation å°†keysçš„å¤§å°æ”¾å…¥åˆ°startä¸­ï¼ˆè¿™ä¸ªç”¨äºè®¡ç®—æœ€åä¸€ä¸ªkeyé•¿åº¦ä½¿ç”¨ï¼Œåœ¨ä¸‹é¢çš„å¾ªç¯ä¸­ï¼‰
+  tmp_keys_.resize(num_keys);//å°†tmp keysè°ƒæ•´åˆ°å®é™…keyæ•°é‡çš„å¤§å°
   for (size_t i = 0; i < num_keys; i++) {
-    const char* base = keys_.data() + start_[i];
-    size_t length = start_[i+1] - start_[i];
-    tmp_keys_[i] = Slice(base, length);
+    const char* base = keys_.data() + start_[i];//baseæ˜¯å½“å‰keyçš„èµ·å§‹ä½ç½®
+    size_t length = start_[i+1] - start_[i];//è·å–åˆ°å½“å‰keyçš„é•¿åº¦
+    tmp_keys_[i] = Slice(base, length);//æ„å»ºå‡ºç¬¬iä¸ªkey
   }
 
   // Generate filter for current set of keys and append to result_.
-  filter_offsets_.push_back(result_.size());
-  policy_->CreateFilter(&tmp_keys_[0], static_cast<int>(num_keys), &result_);//½«¼ÆËã½á¹û·Åµ½ÁËresultÖĞ
+  filter_offsets_.push_back(result_.size());//å°†å…ˆå‰resultçš„sizeæ”¾å…¥filter_offsetsä¸­
+  policy_->CreateFilter(&tmp_keys_[0], static_cast<int>(num_keys), &result_);//å°†å½“å‰keysç”Ÿæˆçš„filterå­˜æ”¾åˆ°resultä¸­
 
   tmp_keys_.clear();
   keys_.clear();
   start_.clear();
 }
 
-//¶ÁÈ¡filterÏà¹ØĞÅÏ¢
-FilterBlockReader::FilterBlockReader(const FilterPolicy* policy,//filterÃû×Ö
-                                     const Slice& contents)//contentsÖĞ°üº¬filterĞÅÏ¢
+//ï¿½ï¿½È¡filterï¿½ï¿½ï¿½ï¿½ï¿½Ï¢
+FilterBlockReader::FilterBlockReader(const FilterPolicy* policy,//filterï¿½ï¿½ï¿½ï¿½
+                                     const Slice& contents)//contentsï¿½Ğ°ï¿½ï¿½ï¿½filterï¿½ï¿½Ï¢
     : policy_(policy),
       data_(NULL),
       offset_(NULL),
       num_(0),
       base_lg_(0) {
   size_t n = contents.size();
-  //ÖÁÉÙÒªÓĞ1byte ´æ·Å»ùÊı£¬4byte´æ·Å´æ·Å
+  //ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½1byte ï¿½ï¿½Å»ï¿½ï¿½ï¿½ï¿½ï¿½4byteï¿½ï¿½Å´ï¿½ï¿½
   if (n < 5) return;  // 1 byte for base_lg_ and 4 for start of offset array
-  base_lg_ = contents[n-1];//base »ùÊıºÍÆğÊ¼µÄoffset array
-  uint32_t last_word = DecodeFixed32(contents.data() + n - 5);//×îºóÒ»¸öword£¬¾ÍÊÇÆğÊ¼arrayµÄÆ«ÒÆÁ¿
-  if (last_word > n - 5) return;//Õâ¸öÓ¦¸Ã±íÊ¾µÄÊÇÒ»¸ö¿Õ
-  data_ = contents.data();//Êı¾İµÈÓÚµ±Ç°µÄÊı¾İ
-  offset_ = data_ + last_word;//Æ«ÒÆÁ¿µÈÓÚµÚÒ»¸öfilter<0>³öÏÖµÄÎ»ÖÃ
-  num_ = (n - 5 - last_word) / 4;//filterµÄÊıÁ¿
+  base_lg_ = contents[n-1];//base ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½offset array
+  uint32_t last_word = DecodeFixed32(contents.data() + n - 5);//ï¿½ï¿½ï¿½Ò»ï¿½ï¿½wordï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼arrayï¿½ï¿½Æ«ï¿½ï¿½ï¿½ï¿½
+  if (last_word > n - 5) return;//ï¿½ï¿½ï¿½Ó¦ï¿½Ã±ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½
+  data_ = contents.data();//ï¿½ï¿½ï¿½İµï¿½ï¿½Úµï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+  offset_ = data_ + last_word;//Æ«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½Ò»ï¿½ï¿½filter<0>ï¿½ï¿½ï¿½Öµï¿½Î»ï¿½ï¿½
+  num_ = (n - 5 - last_word) / 4;//filterï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 }
 
-//ÅĞ¶ÏkeyÊÇ·ñÔÚ¹ıÂËÆ÷ÖĞ
+//ï¿½Ğ¶ï¿½keyï¿½Ç·ï¿½ï¿½Ú¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 bool FilterBlockReader::KeyMayMatch(uint64_t block_offset, const Slice& key) {
-  uint64_t index = block_offset >> base_lg_;//Õâ¸öÊÇµ¥Î»£¬Ä¬ÈÏÊÇ2KB
+  uint64_t index = block_offset >> base_lg_;//ï¿½ï¿½ï¿½ï¿½Çµï¿½Î»ï¿½ï¿½Ä¬ï¿½ï¿½ï¿½ï¿½2KB
   if (index < num_) {
-    uint32_t start = DecodeFixed32(offset_ + index*4);//¶ÔÓ¦filterµÄÆğÊ¼index
-    uint32_t limit = DecodeFixed32(offset_ + index*4 + 4);//¶ÔÓ¦filterµÄÏÂÒ»¸öindex
+    uint32_t start = DecodeFixed32(offset_ + index*4);//ï¿½ï¿½Ó¦filterï¿½ï¿½ï¿½ï¿½Ê¼index
+    uint32_t limit = DecodeFixed32(offset_ + index*4 + 4);//ï¿½ï¿½Ó¦filterï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½index
     if (start <= limit && limit <= static_cast<size_t>(offset_ - data_)) {
       Slice filter = Slice(data_ + start, limit - start);
       return policy_->KeyMayMatch(key, filter);

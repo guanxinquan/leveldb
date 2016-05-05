@@ -60,7 +60,7 @@ size_t BlockBuilder::CurrentSizeEstimate() const {
           sizeof(uint32_t));                      // Restart array length
 }
 
-Slice BlockBuilder::Finish() {//½«restartµÄ¸öÊıºÍÊı×é×·¼Óµ½blockÊı¾İºóÃæ
+Slice BlockBuilder::Finish() {//è¿”å›blockæ‹¼æ¥çš„å­—ç¬¦ä¸²
   // Append restart array
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
@@ -77,33 +77,33 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   assert(buffer_.empty() // No values yet?
          || options_->comparator->Compare(key, last_key_piece) > 0);
   size_t shared = 0;
-  if (counter_ < options_->block_restart_interval) {//²»ĞèÒªÖØÆôµã
+  if (counter_ < options_->block_restart_interval) {//block restart intervalæŒ‡å®šä¸€ä¸ªé‡å¯ç‚¹æœ€å¤šå­˜æ”¾å¤šå°‘ä¸ªå…ƒç´ 
     // See how much sharing to do with previous string
-    const size_t min_length = std::min(last_key_piece.size(), key.size());
+    const size_t min_length = std::min(last_key_piece.size(), key.size());//è·å–ä¸Šä¸€ä¸ªkeyä¸å½“å‰keyçš„æœ€å°é•¿åº¦
     while ((shared < min_length) && (last_key_piece[shared] == key[shared])) {
-      shared++;//¼ÆËã¹²ÓĞ²¿·Ö
+      shared++;//è®¡ç®—keyçš„å…±åŒéƒ¨åˆ†é•¿åº¦
     }
   } else {
     // Restart compression
-    restarts_.push_back(buffer_.size());
-    counter_ = 0;
+    restarts_.push_back(buffer_.size());//restartså­˜æ”¾çš„æ˜¯bufferä¸­çš„ä¸‹æ ‡ï¼Œè®°å½•æ¯ä¸ªé‡å¯ç‚¹çš„å¼€å§‹ä½ç½®
+    counter_ = 0;//å½“å‰é‡å¯ç‚¹å…ƒç´ ä¸º0ä¸ª
   }
-  const size_t non_shared = key.size() - shared;//·Ç¹²Ïí²¿·ÖµÄ³¤¶È
+  const size_t non_shared = key.size() - shared;//è®¡ç®—éå…±äº«éƒ¨åˆ†
 
-  // Add "<shared><non_shared><value_size>" to buffer_
-  PutVarint32(&buffer_, shared);//sharedµÄ³¤¶È
-  PutVarint32(&buffer_, non_shared);//noshard²¿·ÖµÄ³¤¶È
-  PutVarint32(&buffer_, value.size());//ÖµµÄ³¤¶È
+  // Add "<shared><non_shared><value_size>" to buffer_ recordä¸­å­˜æ”¾çš„æ•°æ®ä¸º<shared><non_shared><value_size><non_shared_key><value>
+  PutVarint32(&buffer_, shared);
+  PutVarint32(&buffer_, non_shared);
+  PutVarint32(&buffer_, value.size());
 
   // Add string delta to buffer_ followed by value
-  buffer_.append(key.data() + shared, non_shared);//·ÅÈëdeta string
-  buffer_.append(value.data(), value.size());//·ÅÈëvalueÊı¾İ
+  buffer_.append(key.data() + shared, non_shared);//éå…±äº«éƒ¨åˆ†çš„key
+  buffer_.append(value.data(), value.size());//valueå€¼
 
-  // Update state
-  last_key_.resize(shared);//last key×ª»»ÎªĞÂµÄkey
+  // Update state æ›´æ–°last key
+  last_key_.resize(shared);
   last_key_.append(key.data() + shared, non_shared);
   assert(Slice(last_key_) == key);
-  counter_++;
+  counter_++;//å½“å‰é‡å¯ç‚¹è®°å½•æ•°åŠ 1
 }
 
 }  // namespace leveldb

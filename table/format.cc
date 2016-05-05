@@ -31,11 +31,12 @@ Status BlockHandle::DecodeFrom(Slice* input) {
 
 void Footer::EncodeTo(std::string* dst) const {
   const size_t original_size = dst->size();
-  metaindex_handle_.EncodeTo(dst);
-  index_handle_.EncodeTo(dst);
-  dst->resize(2 * BlockHandle::kMaxEncodedLength);  // Padding
-  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber & 0xffffffffu));
-  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber >> 32));
+  metaindex_handle_.EncodeTo(dst);//å°†metaindex handleå…ˆæ”¾å…¥
+  index_handle_.EncodeTo(dst);//æ”¾å…¥index handle
+  //ä¸Šé¢ä¸¤ä¸ªhandleéƒ½æ˜¯å¯å˜é•¿åº¦çš„ç±»å‹ï¼Œå› æ­¤ï¼Œä¸‹é¢å¡«å……æ•°æ®
+  dst->resize(2 * BlockHandle::kMaxEncodedLength);  // Padding æœ€å¤§é•¿åº¦æ˜¯20
+  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber & 0xffffffffu));//æ”¾å…¥magic numberé«˜32ä½
+  PutFixed32(dst, static_cast<uint32_t>(kTableMagicNumber >> 32));//æ”¾å…¥magic numberçš„ä½32ä½
   assert(dst->size() == original_size + kEncodedLength);
   (void)original_size;  // Disable unused variable warning.
 }
@@ -65,17 +66,17 @@ Status Footer::DecodeFrom(Slice* input) {
 Status ReadBlock(RandomAccessFile* file,
                  const ReadOptions& options,
                  const BlockHandle& handle,
-                 BlockContents* result) {//¶ÁÈ¡Ò»¸öblockµÄÊı¾İ
+                 BlockContents* result) {//ï¿½ï¿½È¡Ò»ï¿½ï¿½blockï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   result->data = Slice();
   result->cachable = false;
   result->heap_allocated = false;
 
-  // Read the block contents as well as the type/crc footer.¶ÁÈ¡blockÖĞµÄÄÚÈİÒÔ¼°Î²²¿typeºÍcrc
-  // See table_builder.cc for the code that built this structure.ÔÚtable_builder.ccÖĞÓĞ¹¹½¨Õâ¸ö½á¹¹µÄÂß¼­
-  size_t n = static_cast<size_t>(handle.size());//ĞèÒª¶ÁÈ¡Êı¾İµÄ´óĞ¡
-  char* buf = new char[n + kBlockTrailerSize];//×Ü´óĞ¡Ó¦µ±°üÀ¨Êı¾İ´óĞ¡+1byte type + 4bytes crc
+  // Read the block contents as well as the type/crc footer.ï¿½ï¿½È¡blockï¿½Ğµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½Î²ï¿½ï¿½typeï¿½ï¿½crc
+  // See table_builder.cc for the code that built this structure.ï¿½ï¿½table_builder.ccï¿½ï¿½ï¿½Ğ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½á¹¹ï¿½ï¿½ï¿½ß¼ï¿½
+  size_t n = static_cast<size_t>(handle.size());//ï¿½ï¿½Òªï¿½ï¿½È¡ï¿½ï¿½ï¿½İµÄ´ï¿½Ğ¡
+  char* buf = new char[n + kBlockTrailerSize];//ï¿½Ü´ï¿½Ğ¡Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½İ´ï¿½Ğ¡+1byte type + 4bytes crc
   Slice contents;
-  //contentsºÍbuf£¬Èç¹ûcontentsÖ¸Ïòbuf£¬ËµÃ÷ÄÚÈİÊÇ´ÓcacheÖĞ¶ÁÈ¡µÄ£¬·ñÔòÄÚ´ÓÎÄ¼şÖĞ¶ÁÈ¡£¬¿ÉÒÔÌí¼Ó»º´æ
+  //contentsï¿½ï¿½bufï¿½ï¿½ï¿½ï¿½ï¿½contentsÖ¸ï¿½ï¿½bufï¿½ï¿½Ëµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½cacheï¿½Ğ¶ï¿½È¡ï¿½Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½Ä¼ï¿½ï¿½Ğ¶ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó»ï¿½ï¿½ï¿½
   Status s = file->Read(handle.offset(), n + kBlockTrailerSize, &contents, buf);
   if (!s.ok()) {
     delete[] buf;
@@ -88,7 +89,7 @@ Status ReadBlock(RandomAccessFile* file,
 
   // Check the crc of the type and the block contents
   const char* data = contents.data();    // Pointer to where Read put the data
-  if (options.verify_checksums) {//Èç¹ûÅäÖÃÁËcrcÑéÖ¤£¬ÕâÀïÑéÖ¤crc
+  if (options.verify_checksums) {//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½crcï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤crc
     const uint32_t crc = crc32c::Unmask(DecodeFixed32(data + n + 1));
     const uint32_t actual = crc32c::Value(data, n + 1);
     if (actual != crc) {
@@ -98,9 +99,9 @@ Status ReadBlock(RandomAccessFile* file,
     }
   }
 
-  switch (data[n]) {//ÅĞ¶Ïtype
-    case kNoCompression://Ã»ÓĞÑ¹Ëõ
-      if (data != buf) {//Èç¹ûdata²»ÊÇÖ¸Ïòbuf£¬ÄÇÃæËµÃ÷Êı¾İ´Ó»º´æÖĞ¶ÁÈ¡
+  switch (data[n]) {//ï¿½Ğ¶ï¿½type
+    case kNoCompression://Ã»ï¿½ï¿½Ñ¹ï¿½ï¿½
+      if (data != buf) {//ï¿½ï¿½ï¿½dataï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½bufï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ëµï¿½ï¿½ï¿½ï¿½ï¿½İ´Ó»ï¿½ï¿½ï¿½ï¿½Ğ¶ï¿½È¡
         // File implementation gave us pointer to some other data.
         // Use it directly under the assumption that it will be live
         // while the file is open.
@@ -108,7 +109,7 @@ Status ReadBlock(RandomAccessFile* file,
         result->data = Slice(data, n);
         result->heap_allocated = false;
         result->cachable = false;  // Do not double-cache
-      } else {//²»ÊÇ´Ó»º´æÖĞ¶ÁÈ¡£¬Òò´Ë¿ÉÒÔ»º´æ
+      } else {//ï¿½ï¿½ï¿½Ç´Ó»ï¿½ï¿½ï¿½ï¿½Ğ¶ï¿½È¡ï¿½ï¿½ï¿½ï¿½Ë¿ï¿½ï¿½Ô»ï¿½ï¿½ï¿½
         result->data = Slice(buf, n);
         result->heap_allocated = true;
         result->cachable = true;
@@ -128,7 +129,7 @@ Status ReadBlock(RandomAccessFile* file,
         delete[] ubuf;
         return Status::Corruption("corrupted compressed block contents");
       }
-      delete[] buf;//Èç¹ûÊı¾İÊÇÑ¹Ëõ¸ñÊ½£¬ÄÇÃæÒ»¶¨ÊÇ´ÓÎÄ¼şÖĞ¶ÁÈ¡µÄ£¬Òò´Ë¿ÉÒÔ»º´æ
+      delete[] buf;//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½Ê½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ç´ï¿½ï¿½Ä¼ï¿½ï¿½Ğ¶ï¿½È¡ï¿½Ä£ï¿½ï¿½ï¿½Ë¿ï¿½ï¿½Ô»ï¿½ï¿½ï¿½
       result->data = Slice(ubuf, ulength);
       result->heap_allocated = true;
       result->cachable = true;

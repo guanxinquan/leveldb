@@ -19,16 +19,16 @@ namespace leveldb {
 
 struct TableBuilder::Rep {
   Options options;
-  Options index_block_options;
+  Options index_block_options;//index block options
   WritableFile* file;
-  uint64_t offset;
+  uint64_t offset;//总偏移量
   Status status;
   BlockBuilder data_block;
   BlockBuilder index_block;
   std::string last_key;
   int64_t num_entries;
   bool closed;          // Either Finish() or Abandon() has been called.
-  FilterBlockBuilder* filter_block;
+  FilterBlockBuilder* filter_block;//filter block different from data and index blocks
 
   // We do not emit the index entry for a block until we have seen the
   // first key for the next data block.  This allows us to use shorter
@@ -97,12 +97,12 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
     assert(r->options.comparator->Compare(key, Slice(r->last_key)) > 0);
   }
 
-  if (r->pending_index_entry) {
+  if (r->pending_index_entry) {//表明当前要创建一个新的block，需要将先前的block相关的索引创建好，放到index_block中。
     assert(r->data_block.empty());
-    r->options.comparator->FindShortestSeparator(&r->last_key, key);
-    std::string handle_encoding;
+    r->options.comparator->FindShortestSeparator(&r->last_key, key);//压缩，在[last_key,key)之间取一个更短的量表示last_key,主要用于节省index的空间
+    std::string handle_encoding;//将offset和size压缩成一个string
     r->pending_handle.EncodeTo(&handle_encoding);
-    r->index_block.Add(r->last_key, Slice(handle_encoding));
+    r->index_block.Add(r->last_key, Slice(handle_encoding));//对应的key是last_key，对应的value是<offset><size>
     r->pending_index_entry = false;
   }
 
@@ -115,17 +115,17 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   r->data_block.Add(key, value);
 
   const size_t estimated_block_size = r->data_block.CurrentSizeEstimate();
-  if (estimated_block_size >= r->options.block_size) {
+  if (estimated_block_size >= r->options.block_size) {//默认的block size是4k
     Flush();
   }
 }
 
-void TableBuilder::Flush() {
+void TableBuilder::Flush() {//生成新的block
   Rep* r = rep_;
   assert(!r->closed);
   if (!ok()) return;
   if (r->data_block.empty()) return;
-  assert(!r->pending_index_entry);
+  assert(!r->pending_index_entry);//保证不会重复
   WriteBlock(&r->data_block, &r->pending_handle);
   if (ok()) {
     r->pending_index_entry = true;
@@ -136,14 +136,14 @@ void TableBuilder::Flush() {
   }
 }
 
-void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {//д��block
+void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {//将数据写入block中，blockHandle用于记录block的位置和长度
   // File format contains a sequence of blocks where each block has:
   //    block_data: uint8[n]
   //    type: uint8
   //    crc: uint32
   assert(ok());
   Rep* r = rep_;
-  Slice raw = block->Finish();
+  Slice raw = block->Finish();//block finished get block string，包括records、restarts和restartsnum
 
   Slice block_contents;
   CompressionType type = r->options.compression;
@@ -178,16 +178,16 @@ void TableBuilder::WriteRawBlock(const Slice& block_contents,
   Rep* r = rep_;
   handle->set_offset(r->offset);//offset
   handle->set_size(block_contents.size());//size
-  r->status = r->file->Append(block_contents);//����ǰ����д���ļ�
+  r->status = r->file->Append(block_contents);//先将内容放入文件
   if (r->status.ok()) {
     char trailer[kBlockTrailerSize];
     trailer[0] = type;
     uint32_t crc = crc32c::Value(block_contents.data(), block_contents.size());
     crc = crc32c::Extend(crc, trailer, 1);  // Extend crc to cover block type
     EncodeFixed32(trailer+1, crc32c::Mask(crc));
-    r->status = r->file->Append(Slice(trailer, kBlockTrailerSize));//��type��crcд���ļ�
+    r->status = r->file->Append(Slice(trailer, kBlockTrailerSize));//将type和crc32放入文件中
     if (r->status.ok()) {
-      r->offset += block_contents.size() + kBlockTrailerSize;//�ƶ���ǰ��offsetΪ�µ�λ��
+      r->offset += block_contents.size() + kBlockTrailerSize;//设置总偏移量
     }
   }
 }
@@ -198,16 +198,16 @@ Status TableBuilder::status() const {
 
 Status TableBuilder::Finish() {
   Rep* r = rep_;
-  Flush();
+  Flush();//当前生成新的block
   assert(!r->closed);
-  r->closed = true;
+  r->closed = true;//不能继续添加数据
 
   BlockHandle filter_block_handle, metaindex_block_handle, index_block_handle;
 
   // Write filter block
   if (ok() && r->filter_block != NULL) {
     WriteRawBlock(r->filter_block->Finish(), kNoCompression,
-                  &filter_block_handle);
+                  &filter_block_handle);//写入filter block，并且记录filter block handle（从什么位置开始，长度多少）
   }
 
   // Write metaindex block
@@ -216,36 +216,36 @@ Status TableBuilder::Finish() {
     if (r->filter_block != NULL) {
       // Add mapping from "filter.Name" to location of filter data
       std::string key = "filter.";
-      key.append(r->options.filter_policy->Name());
+      key.append(r->options.filter_policy->Name());//获取filter的name
       std::string handle_encoding;
       filter_block_handle.EncodeTo(&handle_encoding);
-      meta_index_block.Add(key, handle_encoding);
+      meta_index_block.Add(key, handle_encoding);//这个block中只有一个key和value，key是filter.<name>，而value是handle_encoding，记录filterblock的起始位置和长度
     }
 
     // TODO(postrelease): Add stats and other meta blocks
-    WriteBlock(&meta_index_block, &metaindex_block_handle);
+    WriteBlock(&meta_index_block, &metaindex_block_handle);//写入meta block
   }
 
   // Write index block
   if (ok()) {
-    if (r->pending_index_entry) {
+    if (r->pending_index_entry) {//这段逻辑用于处理最后一条数据的索引，与add逻辑中的内容相似
       r->options.comparator->FindShortSuccessor(&r->last_key);
       std::string handle_encoding;
       r->pending_handle.EncodeTo(&handle_encoding);
       r->index_block.Add(r->last_key, Slice(handle_encoding));
       r->pending_index_entry = false;
     }
-    WriteBlock(&r->index_block, &index_block_handle);
+    WriteBlock(&r->index_block, &index_block_handle);//将index写入block中
   }
 
-  // Write footer
+  // Write footer 最后写入footer
   if (ok()) {
     Footer footer;
-    footer.set_metaindex_handle(metaindex_block_handle);
-    footer.set_index_handle(index_block_handle);
+    footer.set_metaindex_handle(metaindex_block_handle);//footer中设置metaindex_handle
+    footer.set_index_handle(index_block_handle);//footer中设置index_handle
     std::string footer_encoding;
-    footer.EncodeTo(&footer_encoding);
-    r->status = r->file->Append(footer_encoding);
+    footer.EncodeTo(&footer_encoding);//footer进行编码
+    r->status = r->file->Append(footer_encoding);//追加footer信息
     if (r->status.ok()) {
       r->offset += footer_encoding.size();
     }

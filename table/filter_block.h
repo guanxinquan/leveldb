@@ -37,12 +37,12 @@ class FilterBlockBuilder {
  private:
   void GenerateFilter();
 
-  const FilterPolicy* policy_;
-  std::string keys_;              // Flattened key contents£¬ËùÓĞµÄkeyÆ´½ÓÎªÒ»¸ö×Ö·û´®
-  std::vector<size_t> start_;     // Starting index in keys_ of each key Õâ¸öÓÃÓÚÖ¸¶¨²»Í¬key¶ÔÓ¦µÄÆğÊ¼index£¨½áºÏkeysÊ¹ÓÃ£©
-  std::string result_;            // Filter data computed so far
-  std::vector<Slice> tmp_keys_;   // policy_->CreateFilter() argument ½«keys»Ö¸´³ÉSlice£¬ÓÃÓÚ¼ÆËãfilterµÄresult
-  std::vector<uint32_t> filter_offsets_;//offset arrayµÄÆğÊ¼Î»ÖÃ
+  const FilterPolicy* policy_;	  //è¿‡æ»¤å™¨å¯¹åº”çš„ç®—æ³•
+  std::string keys_;              // Flattened key contents å°†æ‰€æœ‰çš„keyæ‹¼æ¥æˆä¸€ä¸ªstring
+  std::vector<size_t> start_;     // Starting index in keys_ of each key è®°å½•æ¯ä¸ªkeyåœ¨keysä¸­å…¶å®ä½ç½®ï¼ˆé€šè¿‡keyså’Œstartï¼Œèƒ½å¤Ÿè·å–åˆ°å®é™…çš„keyï¼‰
+  std::string result_;            // Filter data computed so far è®¡ç®—åçš„å†…å®¹
+  std::vector<Slice> tmp_keys_;   // policy_->CreateFilter() argument é€šè¿‡keyså’Œstartè®¡ç®—å‡ºçš„å®é™…keys
+  std::vector<uint32_t> filter_offsets_;//offset array æ¯ä¸ªfilterçš„åç§»é‡
 
   // No copying allowed
   FilterBlockBuilder(const FilterBlockBuilder&);

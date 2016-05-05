@@ -19,7 +19,7 @@ struct ReadOptions;
 
 // BlockHandle is a pointer to the extent of a file that stores a data
 // block or a meta block.
-class BlockHandle {//ÓÃÓÚ´æ´¢data block»òÕßmeta blockµÄÖ¸Õë
+class BlockHandle {//block handlerç”¨äºè®°å½•ä½ç½®å’Œé•¿åº¦ä¿¡æ¯ï¼Œè¡¨ç¤ºä¸€ä¸ªåŒºå—èŒƒå›´
  public:
   BlockHandle();
 
@@ -31,20 +31,20 @@ class BlockHandle {//ÓÃÓÚ´æ´¢data block»òÕßmeta blockµÄÖ¸Õë
   uint64_t size() const { return size_; }
   void set_size(uint64_t size) { size_ = size; }
 
-  void EncodeTo(std::string* dst) const;//½«Á½¸öÆ«ÒÆÁ¿±àÂë×ª»»Îªstring
-  Status DecodeFrom(Slice* input);//½âÂë³öÁ½¸öÆ«ÒÆÁ¿
+  void EncodeTo(std::string* dst) const;//æ”¾å…¥<offset><size>
+  Status DecodeFrom(Slice* input);//è§£å‹<offset><size>
 
   // Maximum encoding length of a BlockHandle
-  enum { kMaxEncodedLength = 10 + 10 };//Á½¸öÊı×Ö×î´óÕ¼ÓÃ20bytes´óĞ¡£¬Ã¿¸öÕ¼ÓÃ10bytes
+  enum { kMaxEncodedLength = 10 + 10 };//encoding çš„æœ€å¤§é•¿åº¦
 
  private:
-  uint64_t offset_;//Êı¾İµÄÆ«ÒÆÁ¿
-  uint64_t size_;//Êı¾İµÄ´óĞ¡
+  uint64_t offset_;//åç§»é‡
+  uint64_t size_;//å¤§å°
 };
 
 // Footer encapsulates the fixed information stored at the tail
 // end of every table file.
-class Footer {//ÔÚÃ¿¸ötable fileµÄÄ©Î²¶¼»áÓĞÒ»¸ö¹Ì¶¨³¤¶ÈµÄFooter
+class Footer {//<metaindex_handle><index_handle><padding><magic number>
  public:
   Footer() { }
 
@@ -67,21 +67,21 @@ class Footer {//ÔÚÃ¿¸ötable fileµÄÄ©Î²¶¼»áÓĞÒ»¸ö¹Ì¶¨³¤¶ÈµÄFooter
   // Footer will always occupy exactly this many bytes.  It consists
   // of two block handles and a magic number.
   enum {
-    kEncodedLength = 2*BlockHandle::kMaxEncodedLength + 8 //Á½¸öblockHandlerºÍÒ»¸öÄ§Êı
+    kEncodedLength = 2*BlockHandle::kMaxEncodedLength + 8 //8è¡¨ç¤ºmagic number
   };
 
  private:
-  BlockHandle metaindex_handle_;//meta indexµÄÆğÊ¼Î»ÖÃºÍ´óĞ¡¾İËµ»¹Ã»Ê¹ÓÃ
-  BlockHandle index_handle_;//index blockµÄÆğÊ¼Î»ÖÃºÍ´óĞ¡
+  BlockHandle metaindex_handle_;//meta index
+  BlockHandle index_handle_;//index block
 };
 
 // kTableMagicNumber was picked by running
 //    echo http://code.google.com/p/leveldb/ | sha1sum
 // and taking the leading 64 bits.
-static const uint64_t kTableMagicNumber = 0xdb4775248b80fb57ull;//Ä§Êı
+static const uint64_t kTableMagicNumber = 0xdb4775248b80fb57ull;//magic number
 
 // 1-byte type + 32-bit crc
-static const size_t kBlockTrailerSize = 5;//Ã¿¸öblockµÄÎ²²¿´óĞ¡£¬ÓÉ1byteÀàĞÍĞÅÏ¢+4byte crcĞ£ÑéºÍ
+static const size_t kBlockTrailerSize = 5;//1byte type 4byte crc32
 
 struct BlockContents {
   Slice data;           // Actual contents of data
@@ -91,10 +91,10 @@ struct BlockContents {
 
 // Read the block identified by "handle" from "file".  On failure
 // return non-OK.  On success fill *result and return OK.
-extern Status ReadBlock(/*fileÊÇ¶ÔÓ¦µÄÎÄ¼ş*/RandomAccessFile* file,
-						/*optionsÊÇ¶ÁÈ¡Ñ¡Ïî*/const ReadOptions& options,
-                        /*handlerÊÇÆğÊ¼Î»ÖÃºÍÆ«ÒÆÁ¿*/const BlockHandle& handle,
-                        /*¶ÁÈ¡½á¹û*/BlockContents* result);
+extern Status ReadBlock(RandomAccessFile* file,
+						const ReadOptions& options,
+                        const BlockHandle& handle,
+                        BlockContents* result);
 
 // Implementation details follow.  Clients should ignore,
 

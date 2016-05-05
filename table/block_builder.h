@@ -41,11 +41,11 @@ class BlockBuilder {
 
  private:
   const Options*        options_;
-  std::string           buffer_;      // Destination buffer
-  std::vector<uint32_t> restarts_;    // Restart points
-  int                   counter_;     // Number of entries emitted since restart
-  bool                  finished_;    // Has Finish() been called?
-  std::string           last_key_;
+  std::string           buffer_;      // Destination buffer 拼接字符串存放的buffer
+  std::vector<uint32_t> restarts_;    // Restart points 重启点，记录buffer中的下标，表示重启点的位置
+  int                   counter_;     // Number of entries emitted since restart 当前重启点记录数
+  bool                  finished_;    // Has Finish() been called? 是否已经完成
+  std::string           last_key_;	  // 当前key
 
   // No copying allowed
   BlockBuilder(const BlockBuilder&);
