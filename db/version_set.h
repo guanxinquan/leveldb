@@ -313,7 +313,7 @@ class VersionSet {//循环双向链表的集合，存放Version
 
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
-  std::string compact_pointer_[config::kNumLevels];
+  std::string compact_pointer_[config::kNumLevels];//当前各个level更新的最大key值
 
   // No copying allowed
   VersionSet(const VersionSet&);
@@ -368,17 +368,17 @@ class Compaction {
 
   explicit Compaction(int level);
 
-  int level_;//在哪个级别上
+  int level_;//在哪个层次上进行压缩
   uint64_t max_output_file_size_;//最大输出文件大小
-  Version* input_version_;//输入的version
+  Version* input_version_;//压缩时对应的version
   VersionEdit edit_;
 
-  // Each compaction reads inputs from "level_" and "level_+1"
+  // Each compaction reads inputs from "level_" and "level_+1" 这是一个二维数组，第一维存放的是要压缩的文件，第二维存放的是需要合并压缩的文件（就是下一个level需要参加压缩的文件）
   std::vector<FileMetaData*> inputs_[2];      // The two sets of inputs
 
   // State used to check for number of of overlapping grandparent files
   // (parent == level_ + 1, grandparent == level_ + 2)
-  std::vector<FileMetaData*> grandparents_;
+  std::vector<FileMetaData*> grandparents_;//覆盖的更高级别的文件列表
   size_t grandparent_index_;  // Index in grandparent_starts_
   bool seen_key_;             // Some output key has been seen
   int64_t overlapped_bytes_;  // Bytes of overlap between current output
