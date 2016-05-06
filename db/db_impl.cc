@@ -48,14 +48,14 @@ struct DBImpl::Writer {
   explicit Writer(port::Mutex* mu) : cv(mu) { }
 };
 
-struct DBImpl::CompactionState {
-  Compaction* const compaction;
+struct DBImpl::CompactionState {//压缩状态
+  Compaction* const compaction;//压缩的基本信息
 
   // Sequence numbers < smallest_snapshot are not significant since we
   // will never have to service a snapshot below smallest_snapshot.
   // Therefore if we have seen a sequence number S <= smallest_snapshot,
   // we can drop all entries for the same key with sequence numbers < S.
-  SequenceNumber smallest_snapshot;
+  SequenceNumber smallest_snapshot;//
 
   // Files produced by compaction
   struct Output {
@@ -651,11 +651,11 @@ void DBImpl::MaybeScheduleCompaction() {
     // Already got an error; no more changes
   } else if (imm_ == NULL &&
              manual_compaction_ == NULL &&
-             !versions_->NeedsCompaction()) {
+             !versions_->NeedsCompaction()) {//imm是空就不需要压缩，手动压缩也为空，versions也不需要压缩
     // No work to be done
   } else {
-    bg_compaction_scheduled_ = true;
-    env_->Schedule(&DBImpl::BGWork, this);
+    bg_compaction_scheduled_ = true;//标记需要压缩
+    env_->Schedule(&DBImpl::BGWork, this);//后台的程序执行压缩
   }
 }
 
@@ -678,22 +678,22 @@ void DBImpl::BackgroundCall() {
 
   // Previous compaction may have produced too many files in a level,
   // so reschedule another compaction if needed.
-  MaybeScheduleCompaction();
+  MaybeScheduleCompaction();//一轮压缩结束后，判断是否需要开启下一轮压缩
   bg_cv_.SignalAll();
 }
 
 void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
 
-  if (imm_ != NULL) {
-    CompactMemTable();
+  if (imm_ != NULL) {//如果imm不为空，压缩对应的imm
+    CompactMemTable();//压缩完自动返回
     return;
   }
 
   Compaction* c;
   bool is_manual = (manual_compaction_ != NULL);
   InternalKey manual_end;
-  if (is_manual) {
+  if (is_manual) {//手动压缩
     ManualCompaction* m = manual_compaction_;
     c = versions_->CompactRange(m->level, m->begin, m->end);
     m->done = (c == NULL);
@@ -706,21 +706,21 @@ void DBImpl::BackgroundCompaction() {
         (m->begin ? m->begin->DebugString().c_str() : "(begin)"),
         (m->end ? m->end->DebugString().c_str() : "(end)"),
         (m->done ? "(end)" : manual_end.DebugString().c_str()));
-  } else {
+  } else {//非手动压缩
     c = versions_->PickCompaction();
   }
 
   Status status;
   if (c == NULL) {
     // Nothing to do
-  } else if (!is_manual && c->IsTrivialMove()) {
+  } else if (!is_manual && c->IsTrivialMove()) {//只有一个文件需要压缩，并且level＋1没有文件
     // Move file to next level
     assert(c->num_input_files(0) == 1);
-    FileMetaData* f = c->input(0, 0);
-    c->edit()->DeleteFile(c->level(), f->number);
+    FileMetaData* f = c->input(0, 0);//获取［0，0］位置的file
+    c->edit()->DeleteFile(c->level(), f->number);//在edit中删除对应的file
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
-                       f->smallest, f->largest);
-    status = versions_->LogAndApply(c->edit(), &mutex_);
+                       f->smallest, f->largest);//直接将当前file移动到level＋1中
+    status = versions_->LogAndApply(c->edit(), &mutex_);//写入log中
     if (!status.ok()) {
       RecordBackgroundError(status);
     }
@@ -731,9 +731,9 @@ void DBImpl::BackgroundCompaction() {
         static_cast<unsigned long long>(f->file_size),
         status.ToString().c_str(),
         versions_->LevelSummary(&tmp));
-  } else {
+  } else {//
     CompactionState* compact = new CompactionState(c);
-    status = DoCompactionWork(compact);
+    status = DoCompactionWork(compact);//具体的压缩工作
     if (!status.ok()) {
       RecordBackgroundError(status);
     }
@@ -884,8 +884,8 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
 }
 
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
-  const uint64_t start_micros = env_->NowMicros();
-  int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
+  const uint64_t start_micros = env_->NowMicros();//开始时间
+  int64_t imm_micros = 0;  // Micros spent doing imm_ compactions 不变内存表压缩时间
 
   Log(options_.info_log,  "Compacting %d@%d + %d@%d files",
       compact->compaction->num_input_files(0),
@@ -899,13 +899,13 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   if (snapshots_.empty()) {
     compact->smallest_snapshot = versions_->LastSequence();
   } else {
-    compact->smallest_snapshot = snapshots_.oldest()->number_;
+    compact->smallest_snapshot = snapshots_.oldest()->number_;//最老的那个snapshots值
   }
 
   // Release mutex while we're actually doing the compaction work
   mutex_.Unlock();
 
-  Iterator* input = versions_->MakeInputIterator(compact->compaction);
+  Iterator* input = versions_->MakeInputIterator(compact->compaction);//获取输入遍历器
   input->SeekToFirst();
   Status status;
   ParsedInternalKey ikey;
@@ -1120,11 +1120,11 @@ Status DBImpl::Get(const ReadOptions& options,
   MemTable* mem = mem_;
   MemTable* imm = imm_;
   Version* current = versions_->current();//获取当前的version
-  mem->Ref();
-  if (imm != NULL) imm->Ref();
-  current->Ref();
+  mem->Ref();//增加mem增加引用
+  if (imm != NULL) imm->Ref();//增加不可变table的引用
+  current->Ref();//当前version增加引用
 
-  bool have_stat_update = false;
+  bool have_stat_update = false;//这个标记表明查询经过version（即文件查询）
   Version::GetStats stats;
 
   // Unlock while reading from files and memtables
@@ -1132,18 +1132,18 @@ Status DBImpl::Get(const ReadOptions& options,
     mutex_.Unlock();
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
-    if (mem->Get(lkey, value, &s)) {
+    if (mem->Get(lkey, value, &s)) {//从内存表获取
       // Done
-    } else if (imm != NULL && imm->Get(lkey, value, &s)) {
+    } else if (imm != NULL && imm->Get(lkey, value, &s)) {//从不可变内存表获取
       // Done
-    } else {
+    } else {//最后从current version中获取
       s = current->Get(options, lkey, value, &stats);
       have_stat_update = true;
     }
     mutex_.Lock();
   }
 
-  if (have_stat_update && current->UpdateStats(stats)) {
+  if (have_stat_update && current->UpdateStats(stats)) {//如果查询经过version（从文件系统获取信息），需要判断是否需要压缩
     MaybeScheduleCompaction();
   }
   mem->Unref();

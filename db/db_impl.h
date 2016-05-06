@@ -155,7 +155,7 @@ class DBImpl : public DB {
   // part of ongoing compactions.
   std::set<uint64_t> pending_outputs_;
 
-  // Has a background compaction been scheduled or is running?
+  // Has a background compaction been scheduled or is running? 在后台，压缩程序正在跑
   bool bg_compaction_scheduled_;
 
   // Information for a manual compaction

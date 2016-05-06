@@ -82,18 +82,18 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
 Iterator* TableCache::NewIterator(const ReadOptions& options,
                                   uint64_t file_number,
                                   uint64_t file_size,
-                                  Table** tableptr) {
+                                  Table** tableptr) {//遍历器
   if (tableptr != NULL) {
     *tableptr = NULL;
   }
 
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
+  Status s = FindTable(file_number, file_size, &handle);//获取文件cache handle（实际是指向文件的一个指针）
   if (!s.ok()) {
     return NewErrorIterator(s);
   }
 
-  Table* table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+  Table* table = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;//获取table
   Iterator* result = table->NewIterator(options);
   result->RegisterCleanup(&UnrefEntry, cache_, handle);
   if (tableptr != NULL) {

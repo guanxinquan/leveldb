@@ -14,7 +14,7 @@ namespace leveldb {
 // caches the valid() and key() results for an underlying iterator.
 // This can help avoid virtual function calls and also gives better
 // cache locality.
-class IteratorWrapper {
+class IteratorWrapper {// 缓存底层的iterator的key和valid
  public:
   IteratorWrapper(): iter_(NULL), valid_(false) { }
   explicit IteratorWrapper(Iterator* iter): iter_(NULL) {
@@ -26,9 +26,9 @@ class IteratorWrapper {
   // Takes ownership of "iter" and will delete it when destroyed, or
   // when Set() is invoked again.
   void Set(Iterator* iter) {
-    delete iter_;
-    iter_ = iter;
-    if (iter_ == NULL) {
+    delete iter_;// 删除先前的iter
+    iter_ = iter;// 赋值当前的iter
+    if (iter_ == NULL) {//
       valid_ = false;
     } else {
       Update();
@@ -49,10 +49,10 @@ class IteratorWrapper {
   void SeekToLast()         { assert(iter_); iter_->SeekToLast();  Update(); }
 
  private:
-  void Update() {
+  void Update() {// 缓存当前的key和valid
     valid_ = iter_->Valid();
     if (valid_) {
-      key_ = iter_->key();
+      key_ = iter_->key();// 当前的key
     }
   }
 

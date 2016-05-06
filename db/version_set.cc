@@ -157,7 +157,7 @@ class Version::LevelFileNumIterator : public Iterator {
                        const std::vector<FileMetaData*>* flist)
       : icmp_(icmp),
         flist_(flist),
-        index_(flist->size()) {        // Marks as invalid
+        index_(flist->size()) {        // Marks as invalid 最开始标记为不可用
   }
   virtual bool Valid() const {
     return index_ < flist_->size();
@@ -165,15 +165,15 @@ class Version::LevelFileNumIterator : public Iterator {
   virtual void Seek(const Slice& target) {
     index_ = FindFile(icmp_, *flist_, target);
   }
-  virtual void SeekToFirst() { index_ = 0; }
-  virtual void SeekToLast() {
+  virtual void SeekToFirst() { index_ = 0; }//移动到第一个文件
+  virtual void SeekToLast() {//移动到最后一个文件
     index_ = flist_->empty() ? 0 : flist_->size() - 1;
   }
-  virtual void Next() {
+  virtual void Next() {//下一个是下一个文件
     assert(Valid());
     index_++;
   }
-  virtual void Prev() {
+  virtual void Prev() {//前一个是前一个文件
     assert(Valid());
     if (index_ == 0) {
       index_ = flist_->size();  // Marks as invalid
@@ -183,9 +183,9 @@ class Version::LevelFileNumIterator : public Iterator {
   }
   Slice key() const {
     assert(Valid());
-    return (*flist_)[index_]->largest.Encode();
+    return (*flist_)[index_]->largest.Encode();//index对应文件的最大key
   }
-  Slice value() const {
+  Slice value() const {//对应文件的number和大小
     assert(Valid());
     EncodeFixed64(value_buf_, (*flist_)[index_]->number);
     EncodeFixed64(value_buf_+8, (*flist_)[index_]->file_size);
@@ -193,25 +193,25 @@ class Version::LevelFileNumIterator : public Iterator {
   }
   virtual Status status() const { return Status::OK(); }
  private:
-  const InternalKeyComparator icmp_;
-  const std::vector<FileMetaData*>* const flist_;
-  uint32_t index_;
+  const InternalKeyComparator icmp_;//比较器
+  const std::vector<FileMetaData*>* const flist_;//文件列表file list
+  uint32_t index_;//当前遍历到第几个文件
 
   // Backing store for value().  Holds the file number and size.
-  mutable char value_buf_[16];
+  mutable char value_buf_[16];//存放file的number和大小
 };
 
 static Iterator* GetFileIterator(void* arg,
                                  const ReadOptions& options,
                                  const Slice& file_value) {
   TableCache* cache = reinterpret_cast<TableCache*>(arg);
-  if (file_value.size() != 16) {
+  if (file_value.size() != 16) {// filenumber＋size
     return NewErrorIterator(
         Status::Corruption("FileReader invoked with unexpected value"));
   } else {
     return cache->NewIterator(options,
                               DecodeFixed64(file_value.data()),
-                              DecodeFixed64(file_value.data() + 8));
+                              DecodeFixed64(file_value.data() + 8));//获取内部文件的遍历器
   }
 }
 
@@ -1250,30 +1250,30 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   options.verify_checksums = options_->paranoid_checks;
   options.fill_cache = false;
 
-  // Level-0 files have to be merged together.  For other levels,
-  // we will make a concatenating iterator per level.
-  // TODO(opt): use concatenating iterator for level-0 if there is no overlap
-  const int space = (c->level() == 0 ? c->inputs_[0].size() + 1 : 2);
+  // Level-0 files have to be merged together.  For other levels, level－0要先merge到一起
+  // we will make a concatenating iterator per level. 串联
+  // TODO(opt): use concatenating iterator for level-0 if there is no overlap 如果level0没有相互覆盖，也可以使用串行
+  const int space = (c->level() == 0 ? c->inputs_[0].size() + 1 : 2);//如果是level0 那么存放的是input0中的大小＋1，否则是2（最后会串在一起
   Iterator** list = new Iterator*[space];
   int num = 0;
   for (int which = 0; which < 2; which++) {
     if (!c->inputs_[which].empty()) {
-      if (c->level() + which == 0) {
-        const std::vector<FileMetaData*>& files = c->inputs_[which];
-        for (size_t i = 0; i < files.size(); i++) {
+      if (c->level() + which == 0) {//这个是level0的处理
+        const std::vector<FileMetaData*>& files = c->inputs_[which];//取出所有level0的文件
+        for (size_t i = 0; i < files.size(); i++) {//遍历level0的所有文件
           list[num++] = table_cache_->NewIterator(
-              options, files[i]->number, files[i]->file_size);
+              options, files[i]->number, files[i]->file_size);//设置所有文件的遍历器
         }
       } else {
-        // Create concatenating iterator for the files from this level
+        // Create concatenating iterator for the files from this level 串联遍历器
         list[num++] = NewTwoLevelIterator(
             new Version::LevelFileNumIterator(icmp_, &c->inputs_[which]),
-            &GetFileIterator, table_cache_, options);
+            &GetFileIterator, table_cache_, options);//按照文件遍历的遍历器
       }
     }
   }
   assert(num <= space);
-  Iterator* result = NewMergingIterator(&icmp_, list, num);
+  Iterator* result = NewMergingIterator(&icmp_, list, num);//合并遍历器
   delete[] list;
   return result;
 }
@@ -1453,13 +1453,13 @@ Compaction::~Compaction() {
   }
 }
 
-bool Compaction::IsTrivialMove() const {
+bool Compaction::IsTrivialMove() const {//琐碎移动（防止level＋2压缩时有过多的文件参与
   // Avoid a move if there is lots of overlapping grandparent data.
   // Otherwise, the move could create a parent file that will require
   // a very expensive merge later on.
   return (num_input_files(0) == 1 &&
           num_input_files(1) == 0 &&
-          TotalFileSize(grandparents_) <= kMaxGrandParentOverlapBytes);
+          TotalFileSize(grandparents_) <= kMaxGrandParentOverlapBytes);//如果需要压缩的只有一个文件，并且level＋1没有文件，而且level＋2关于这个文件涉及的宽度较大（就是说影响的文件较多，这样，如果根据当前文件创建一个level＋1的文件，那么当level＋1的这个文件压缩时，需要涉及过多的level＋2文件压缩，因此要避免这个情况）
 }
 
 void Compaction::AddInputDeletions(VersionEdit* edit) {

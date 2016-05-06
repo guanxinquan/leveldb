@@ -33,10 +33,10 @@ class MergingIterator : public Iterator {
   }
 
   virtual void SeekToFirst() {
-    for (int i = 0; i < n_; i++) {
+    for (int i = 0; i < n_; i++) {//所有的都找到第一个元素
       children_[i].SeekToFirst();
     }
-    FindSmallest();
+    FindSmallest();//将current置位当前最小值
     direction_ = kForward;
   }
 
@@ -44,7 +44,7 @@ class MergingIterator : public Iterator {
     for (int i = 0; i < n_; i++) {
       children_[i].SeekToLast();
     }
-    FindLargest();
+    FindLargest();//找到最大值
     direction_ = kReverse;
   }
 
@@ -52,7 +52,7 @@ class MergingIterator : public Iterator {
     for (int i = 0; i < n_; i++) {
       children_[i].Seek(target);
     }
-    FindSmallest();
+    FindSmallest();//找到最小值
     direction_ = kForward;
   }
 
@@ -70,7 +70,7 @@ class MergingIterator : public Iterator {
         if (child != current_) {
           child->Seek(key());
           if (child->Valid() &&
-              comparator_->Compare(key(), child->key()) == 0) {
+              comparator_->Compare(key(), child->key()) == 0) {//如果key相等，对应的就要移动到下一个
             child->Next();
           }
         }
@@ -78,7 +78,7 @@ class MergingIterator : public Iterator {
       direction_ = kForward;
     }
 
-    current_->Next();
+    current_->Next();//当前的也移动到下一个
     FindSmallest();
   }
 
@@ -139,17 +139,17 @@ class MergingIterator : public Iterator {
   // We might want to use a heap in case there are lots of children.
   // For now we use a simple array since we expect a very small number
   // of children in leveldb.
-  const Comparator* comparator_;
-  IteratorWrapper* children_;
-  int n_;
-  IteratorWrapper* current_;
+  const Comparator* comparator_;//比较器
+  IteratorWrapper* children_;//需要合并的各个file的iter
+  int n_;//个数
+  IteratorWrapper* current_;//当前的iter
 
   // Which direction is the iterator moving?
   enum Direction {
     kForward,
     kReverse
   };
-  Direction direction_;
+  Direction direction_;//方向
 };
 
 void MergingIterator::FindSmallest() {
@@ -164,7 +164,7 @@ void MergingIterator::FindSmallest() {
       }
     }
   }
-  current_ = smallest;
+  current_ = smallest;//当前最小值
 }
 
 void MergingIterator::FindLargest() {
@@ -183,7 +183,7 @@ void MergingIterator::FindLargest() {
 }
 }  // namespace
 
-Iterator* NewMergingIterator(const Comparator* cmp, Iterator** list, int n) {
+Iterator* NewMergingIterator(const Comparator* cmp, Iterator** list, int n) {//合并遍历器
   assert(n >= 0);
   if (n == 0) {
     return NewEmptyIterator();
