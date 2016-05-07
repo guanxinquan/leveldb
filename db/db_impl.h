@@ -153,7 +153,7 @@ class DBImpl : public DB {
 
   // Set of table files to protect from deletion because they are
   // part of ongoing compactions.
-  std::set<uint64_t> pending_outputs_;
+  std::set<uint64_t> pending_outputs_;//这是不可删除文件，这个文件正在被操作（例如 合并追加）
 
   // Has a background compaction been scheduled or is running? 在后台，压缩程序正在跑
   bool bg_compaction_scheduled_;
