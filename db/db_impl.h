@@ -136,13 +136,13 @@ class DBImpl : public DB {
   // State below is protected by mutex_
   port::Mutex mutex_;
   port::AtomicPointer shutting_down_;
-  port::CondVar bg_cv_;          // Signalled when background work finishes
+  port::CondVar bg_cv_;          // Signalled when background work finishes 后台跑的压缩线程使用的信号量
   MemTable* mem_;				//memTable正在使用的
   MemTable* imm_;                // Memtable being compacted 正在压缩的memTable
   port::AtomicPointer has_imm_;  // So bg thread can detect non-NULL imm_
-  WritableFile* logfile_;
-  uint64_t logfile_number_;
-  log::Writer* log_;
+  WritableFile* logfile_;//log file 用于存放写入值
+  uint64_t logfile_number_;//当前log file对应的number
+  log::Writer* log_;//log使用对应的log文件写入
   uint32_t seed_;                // For sampling.
 
   // Queue of writers.
