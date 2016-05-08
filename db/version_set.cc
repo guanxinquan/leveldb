@@ -187,8 +187,8 @@ class Version::LevelFileNumIterator : public Iterator {
   }
   Slice value() const {//对应文件的number和大小
     assert(Valid());
-    EncodeFixed64(value_buf_, (*flist_)[index_]->number);
-    EncodeFixed64(value_buf_+8, (*flist_)[index_]->file_size);
+    EncodeFixed64(value_buf_, (*flist_)[index_]->number);//文件编号
+    EncodeFixed64(value_buf_+8, (*flist_)[index_]->file_size);//文件大小
     return Slice(value_buf_, sizeof(value_buf_));
   }
   virtual Status status() const { return Status::OK(); }
@@ -1338,28 +1338,28 @@ void VersionSet::SetupOtherInputs(Compaction* c) {
   InternalKey smallest, largest;
   GetRange(c->inputs_[0], &smallest, &largest);//获取区间的范围
 
-  current_->GetOverlappingInputs(level+1, &smallest, &largest, &c->inputs_[1]);//将更高级别的覆盖当前范围的文件放入inputs 1中
+  current_->GetOverlappingInputs(level+1, &smallest, &largest, &c->inputs_[1]);//将level+1层压缩相关的文件放入inputs[1]中
 
   // Get entire range covered by compaction
   InternalKey all_start, all_limit;
-  GetRange2(c->inputs_[0], c->inputs_[1], &all_start, &all_limit);//获取新区间的整体范围（imputs 0和1中所有文件的key范围
+  GetRange2(c->inputs_[0], c->inputs_[1], &all_start, &all_limit);//根据level和level+1确定key压缩空间范围
 
   // See if we can grow the number of inputs in "level" without
   // changing the number of "level+1" files we pick up.
   if (!c->inputs_[1].empty()) {//level+1的文件不是空
     std::vector<FileMetaData*> expanded0;//将当前空间扩展后，当前level的文件
-    current_->GetOverlappingInputs(level, &all_start, &all_limit, &expanded0);//获取当前level在整体范围内的所有文件
+    current_->GetOverlappingInputs(level, &all_start, &all_limit, &expanded0);//根据level和level+1压缩key空间反向扩展level的压缩文件数量
     const int64_t inputs0_size = TotalFileSize(c->inputs_[0]);//当前level扩展前文件的总大小
-    const int64_t inputs1_size = TotalFileSize(c->inputs_[1]);//level+1 需要压缩的文件的总大小
+    const int64_t inputs1_size = TotalFileSize(c->inputs_[1]);//扩展前level+1的总大小
     const int64_t expanded0_size = TotalFileSize(expanded0);//当前level扩展后的文件的总大小
-    if (expanded0.size() > c->inputs_[0].size() &&
+    if (expanded0.size() > c->inputs_[0].size() &&//发生扩展（就是说反向扩展增加了文件）
         inputs1_size + expanded0_size < kExpandedCompactionByteSizeLimit) {//要小于50M空间 这个判断说明，如果当前level可以扩展，并且扩展后需要处理的总数据量小于50MB，
       InternalKey new_start, new_limit;
-      GetRange(expanded0, &new_start, &new_limit);//当前level扩展后的最大值和最小值
-      std::vector<FileMetaData*> expanded1;//扩展后的level1对应的范围
+      GetRange(expanded0, &new_start, &new_limit);//获取扩展后当前level的key空间
+      std::vector<FileMetaData*> expanded1;//扩展后的level1对应文件
       current_->GetOverlappingInputs(level+1, &new_start, &new_limit,
                                      &expanded1);
-      if (expanded1.size() == c->inputs_[1].size()) {//如果扩展后level+1的大小与扩展前level+1的大小一直
+      if (expanded1.size() == c->inputs_[1].size()) {//如果扩展后level+1的大小与扩展前level+1的大小一致
         Log(options_->info_log,
             "Expanding@%d %d+%d (%ld+%ld bytes) to %d+%d (%ld+%ld bytes)\n",
             level,
@@ -1371,9 +1371,9 @@ void VersionSet::SetupOtherInputs(Compaction* c) {
             long(expanded0_size), long(inputs1_size));
         smallest = new_start;
         largest = new_limit;
-        c->inputs_[0] = expanded0;//使用扩展后的input
-        c->inputs_[1] = expanded1;
-        GetRange2(c->inputs_[0], c->inputs_[1], &all_start, &all_limit);
+        c->inputs_[0] = expanded0;//使用扩展后的level
+        c->inputs_[1] = expanded1;//使用扩展后的level+1
+        GetRange2(c->inputs_[0], c->inputs_[1], &all_start, &all_limit);//获取新的key空间
       }
     }
   }

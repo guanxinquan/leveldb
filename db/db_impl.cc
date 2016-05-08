@@ -717,10 +717,10 @@ void DBImpl::BackgroundCompaction() {
     // Move file to next level
     assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);//获取［0，0］位置的file
-    c->edit()->DeleteFile(c->level(), f->number);//在edit中删除对应的file
+    c->edit()->DeleteFile(c->level(), f->number);//在edit中的删除文件中添加老文件
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
-                       f->smallest, f->largest);//直接将当前file移动到level＋1中
-    status = versions_->LogAndApply(c->edit(), &mutex_);//写入log中
+                       f->smallest, f->largest);//将新生成的文件添加到edit的新增文件中
+    status = versions_->LogAndApply(c->edit(), &mutex_);//更新version
     if (!status.ok()) {
       RecordBackgroundError(status);
     }
