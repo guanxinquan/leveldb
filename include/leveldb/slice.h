@@ -94,9 +94,9 @@ inline bool operator!=(const Slice& x, const Slice& y) {
 }
 
 inline int Slice::compare(const Slice& b) const {
-  const size_t min_len = (size_ < b.size_) ? size_ : b.size_;
-  int r = memcmp(data_, b.data_, min_len);
-  if (r == 0) {
+  const size_t min_len = (size_ < b.size_) ? size_ : b.size_;//获取两个slice最小长度
+  int r = memcmp(data_, b.data_, min_len);//比较两个slice在最小长度范围内的大小
+  if (r == 0) {//如果在最小长度范围内比较值相等，长度长的slice认为较大
     if (size_ < b.size_) r = -1;
     else if (size_ > b.size_) r = +1;
   }

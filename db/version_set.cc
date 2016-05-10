@@ -262,10 +262,10 @@ static void SaveValue(void* arg, const Slice& ikey, const Slice& v) {
   if (!ParseInternalKey(ikey, &parsed_key)) {
     s->state = kCorrupt;
   } else {
-    if (s->ucmp->Compare(parsed_key.user_key, s->user_key) == 0) {//找到了对应的key
-      s->state = (parsed_key.type == kTypeValue) ? kFound : kDeleted;//判断是否删除
+    if (s->ucmp->Compare(parsed_key.user_key, s->user_key) == 0) {//比较key是否相等
+      s->state = (parsed_key.type == kTypeValue) ? kFound : kDeleted;//如果key相等，判断key是否已经被删除
       if (s->state == kFound) {//如果找到，赋值
-        s->value->assign(v.data(), v.size());
+        s->value->assign(v.data(), v.size());//将值赋值到对应的data中
       }
     }
   }
@@ -402,7 +402,7 @@ Status Version::Get(const ReadOptions& options,
         return s;
       }
       switch (saver.state) {//有如下几种状态，没找到，找到，已删除和异常
-        case kNotFound:
+        case kNotFound://这是初始值，（如果没找到对应的key，saveValue中不对saver变量赋值，因此为kNotFound）
           break;      // Keep searching in other files，继续在其他文件中搜寻
         case kFound:
           return s;//找到直接返回
@@ -658,7 +658,7 @@ class VersionSet::Builder {
     for (size_t i = 0; i < edit->compact_pointers_.size(); i++) {
       const int level = edit->compact_pointers_[i].first;//获取level
       vset_->compact_pointer_[level] =
-          edit->compact_pointers_[i].second.Encode().ToString();//更新相应level的最大值
+          edit->compact_pointers_[i].second.Encode().ToString();//更新下次压缩起始值
     }
 
     // Delete files
@@ -710,18 +710,20 @@ class VersionSet::Builder {
       std::vector<FileMetaData*>::const_iterator base_end = base_files.end();//当前版本终止
       const FileSet* added = levels_[level].added_files;//需要添加的文件
       v->files_[level].reserve(base_files.size() + added->size());//预先分配空间
+
+      //双重循环，用于合并两个数组，并保证数组的有序性
       for (FileSet::const_iterator added_iter = added->begin();
            added_iter != added->end();
            ++added_iter) {//遍历添加的文件
         // Add all smaller files listed in base_ 将当前version中的小于对应iter的file，添加到新version中
         for (std::vector<FileMetaData*>::const_iterator bpos
-                 = std::upper_bound(base_iter, base_end, *added_iter, cmp);
+                 = std::upper_bound(base_iter, base_end, *added_iter, cmp);//获取上限
              base_iter != bpos;
              ++base_iter) {//计算插入点位置
-          MaybeAddFile(v, level, *base_iter);//添加文件
+          MaybeAddFile(v, level, *base_iter);//添加或者删除文件
         }
 
-        MaybeAddFile(v, level, *added_iter);//添加新文件
+        MaybeAddFile(v, level, *added_iter);//添加或者删除文件
       }
 
       // Add remaining base files
@@ -1473,15 +1475,15 @@ void Compaction::AddInputDeletions(VersionEdit* edit) {
 bool Compaction::IsBaseLevelForKey(const Slice& user_key) {
   // Maybe use binary search to find right entry instead of linear search?
   const Comparator* user_cmp = input_version_->vset_->icmp_.user_comparator();
-  for (int lvl = level_ + 2; lvl < config::kNumLevels; lvl++) {
-    const std::vector<FileMetaData*>& files = input_version_->files_[lvl];
+  for (int lvl = level_ + 2; lvl < config::kNumLevels; lvl++) {//遍历level＋2之后的所有层
+    const std::vector<FileMetaData*>& files = input_version_->files_[lvl];//取出对应的层文件列表
     for (; level_ptrs_[lvl] < files.size(); ) {
-      FileMetaData* f = files[level_ptrs_[lvl]];
+      FileMetaData* f = files[level_ptrs_[lvl]];//取出对应的file
       if (user_cmp->Compare(user_key, f->largest.user_key()) <= 0) {
         // We've advanced far enough
         if (user_cmp->Compare(user_key, f->smallest.user_key()) >= 0) {
           // Key falls in this file's range, so definitely not base level
-          return false;
+          return false;//这个key被其它空间覆盖，因此不是基础level
         }
         break;
       }
@@ -1496,15 +1498,15 @@ bool Compaction::ShouldStopBefore(const Slice& internal_key) {
   const InternalKeyComparator* icmp = &input_version_->vset_->icmp_;
   while (grandparent_index_ < grandparents_.size() &&
       icmp->Compare(internal_key,
-                    grandparents_[grandparent_index_]->largest.Encode()) > 0) {//当前的key大于level＋2层的某个文件的最大值
+                    grandparents_[grandparent_index_]->largest.Encode()) > 0) {//判断应当使用哪个level＋2的文件的key范围包含当前文件
     if (seen_key_) {
-      overlapped_bytes_ += grandparents_[grandparent_index_]->file_size;//覆盖的范围加上当前文件
+      overlapped_bytes_ += grandparents_[grandparent_index_]->file_size;//累计level＋2上key空间覆盖的总大小
     }
     grandparent_index_++;
   }
   seen_key_ = true;
 
-  if (overlapped_bytes_ > kMaxGrandParentOverlapBytes) {//当前key 覆盖了过多的文件
+  if (overlapped_bytes_ > kMaxGrandParentOverlapBytes) {//单个output文件key空间不应覆盖level＋2层过多的数据，这个限制为20M
     // Too much overlap for current output; start new output
     overlapped_bytes_ = 0;
     return true;

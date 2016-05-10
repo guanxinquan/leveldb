@@ -815,14 +815,14 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
   assert(compact->outfile != NULL);
   assert(compact->builder != NULL);
 
-  const uint64_t output_number = compact->current_output()->number;
+  const uint64_t output_number = compact->current_output()->number;//获取当前output的number
   assert(output_number != 0);
 
   // Check for iterator errors
   Status s = input->status();
-  const uint64_t current_entries = compact->builder->NumEntries();
+  const uint64_t current_entries = compact->builder->NumEntries();//当前entry的数量
   if (s.ok()) {
-    s = compact->builder->Finish();
+    s = compact->builder->Finish();//当前output压缩完成
   } else {
     compact->builder->Abandon();
   }
@@ -842,7 +842,7 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
   delete compact->outfile;
   compact->outfile = NULL;
 
-  if (s.ok() && current_entries > 0) {
+  if (s.ok() && current_entries > 0) {//确保table是可用的
     // Verify that the table is usable
     Iterator* iter = table_cache_->NewIterator(ReadOptions(),
                                                output_number,
@@ -897,9 +897,9 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   assert(compact->builder == NULL);
   assert(compact->outfile == NULL);
   if (snapshots_.empty()) {
-    compact->smallest_snapshot = versions_->LastSequence();
+    compact->smallest_snapshot = versions_->LastSequence();//这个值等于最新的version
   } else {
-    compact->smallest_snapshot = snapshots_.oldest()->number_;//最老的那个snapshots值
+    compact->smallest_snapshot = snapshots_.oldest()->number_;//这个值等于最老的version
   }
 
   // Release mutex while we're actually doing the compaction work
@@ -927,8 +927,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
     Slice key = input->key();
     if (compact->compaction->ShouldStopBefore(key) &&
-        compact->builder != NULL) {//这个key会跨越很多level＋2层的文件
-      status = FinishCompactionOutputFile(compact, input);//完成当前文件压缩
+        compact->builder != NULL) {//用于判断当前output文件内容是否已经足够多，是否应当创建一个新文件（即文件切割的时机，这与level＋2层output文件key空间覆盖的数据量有关20M）
+      status = FinishCompactionOutputFile(compact, input);//完成当前output文件压缩
       if (!status.ok()) {
         break;
       }
@@ -936,38 +936,46 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
     // Handle key/value, add to state, etc.
     bool drop = false;
-    if (!ParseInternalKey(key, &ikey)) {//判断key是否是被删除 没被删除
+    if (!ParseInternalKey(key, &ikey)) {//判断异常key，对于key解析异常，直接忽略掉
       // Do not hide error keys
-      current_user_key.clear();
-      has_current_user_key = false;
-      last_sequence_for_key = kMaxSequenceNumber;
-    } else {//被删除
-      if (!has_current_user_key ||
+      current_user_key.clear();//当前处理的key清空
+      has_current_user_key = false;//当前处理的key无效
+      last_sequence_for_key = kMaxSequenceNumber;//上个key的last_sequence_for_key置位最大值
+    } else {//如果key正常解析
+    	/*
+    	 * 下面的逻辑描述起来比较复杂
+    	 * 1. 如果key第一次出现，那么last_sequence_for_key置为最大值（原因在于，level越低sequence number就越大，因此，第一次出现说明这个key在这次压缩中，sequence number最大）
+    	 * 2. 如果last_sequence_for_key小于compact->smallest_snapshot，说明当前处理的key不是第一次出现，并且先前的key对应的sequence key小于最小的snapshot value，那么当前处理的值就是无用的，可以直接删除）
+    	 * 3. 如果key是第一次出现或者由于某个snapshot使得当前key，并且key被标记为删除，如果key的sequence小于compact->smallest_snapshot，并且key的区间在更深的层次上没有，说明在更高level上没有存在相同的key，那么key可以删除。
+    	 */
+
+
+      if (!has_current_user_key ||//has_current_user_key无效，说明上个key是空，因此，当前处理的key为首次出现
           user_comparator()->Compare(ikey.user_key,
-                                     Slice(current_user_key)) != 0) {
+                                     Slice(current_user_key)) != 0) {//如果has_current_user_key有效，需要比较current_user_key和当前key值，如果不相等，说明key首次出现
         // First occurrence of this user key
-        current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());
-        has_current_user_key = true;
-        last_sequence_for_key = kMaxSequenceNumber;
+        current_user_key.assign(ikey.user_key.data(), ikey.user_key.size());//current_user_key赋值当前user_key的实际值
+        has_current_user_key = true;//标识当前的current_user_key是可用的
+        last_sequence_for_key = kMaxSequenceNumber;//首次出现last_sequence_for_key为最大值
       }
 
-      if (last_sequence_for_key <= compact->smallest_snapshot) {
+      if (last_sequence_for_key <= compact->smallest_snapshot) {//如果last_sequence_for_key比smallest_snapshot，说明这个值已经被覆盖了（原因在于首次出现的key的last_sequence_for_key被置位为最大值
         // Hidden by an newer entry for same user key
         drop = true;    // (A)
-      } else if (ikey.type == kTypeDeletion &&
-                 ikey.sequence <= compact->smallest_snapshot &&
-                 compact->compaction->IsBaseLevelForKey(ikey.user_key)) {
+      } else if (ikey.type == kTypeDeletion &&//已经删除
+                 ikey.sequence <= compact->smallest_snapshot &&//并且key已经不在当前系统维护的version中
+                 compact->compaction->IsBaseLevelForKey(ikey.user_key)) {//而且key也不在扩展级别的空间范围内（就是所有父空间都不覆盖key的范围
         // For this user key:
-        // (1) there is no data in higher levels
-        // (2) data in lower levels will have larger sequence numbers
-        // (3) data in layers that are being compacted here and have
+        // (1) there is no data in higher levels 在更高的level中已经没有key空间覆盖当前的key（此时，key当前的level称为基础level，从后向前数，第一次出现key的level）
+        // (2) data in lower levels will have larger sequence numbers 在更低level上的sequence number就越大
+        // (3) data in layers that are being compacted here and have 在当前level压缩的数据，具有更小的sequece number的将会在之后的多个遍历过程过程中被删除（按照条件A）
         //     smaller sequence numbers will be dropped in the next
         //     few iterations of this loop (by rule (A) above).
         // Therefore this deletion marker is obsolete and can be dropped.
         drop = true;
       }
 
-      last_sequence_for_key = ikey.sequence;
+      last_sequence_for_key = ikey.sequence;//将当前key的sequece置为last_sequence_for_key
     }
 #if 0
     Log(options_.info_log,
@@ -981,7 +989,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
     if (!drop) {
       // Open output file if necessary
-      if (compact->builder == NULL) {//如果builder为空
+      if (compact->builder == NULL) {//如果builder为空，需要创建新的outer文件
         status = OpenCompactionOutputFile(compact);
         if (!status.ok()) {
           break;
@@ -1111,10 +1119,10 @@ Status DBImpl::Get(const ReadOptions& options,
   Status s;
   MutexLock l(&mutex_);
   SequenceNumber snapshot;
-  if (options.snapshot != NULL) {
+  if (options.snapshot != NULL) {//如果用户查询时未指定snapshot，那么使用当前系统的snapshot
     snapshot = reinterpret_cast<const SnapshotImpl*>(options.snapshot)->number_;
   } else {
-    snapshot = versions_->LastSequence();
+    snapshot = versions_->LastSequence();//最新的sequence
   }
 
   MemTable* mem = mem_;

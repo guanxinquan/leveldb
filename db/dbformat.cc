@@ -47,20 +47,20 @@ const char* InternalKeyComparator::Name() const {
   return "leveldb.InternalKeyComparator";
 }
 
-int InternalKeyComparator::Compare(const Slice& akey, const Slice& bkey) const {
+int InternalKeyComparator::Compare(const Slice& akey, const Slice& bkey) const {//排序算法按照user_key升序，相同user_key按照sequence number 降序
   // Order by:
   //    increasing user key (according to user-supplied comparator)
   //    decreasing sequence number
   //    decreasing type (though sequence# should be enough to disambiguate)
-  int r = user_comparator_->Compare(ExtractUserKey(akey), ExtractUserKey(bkey));
-  if (r == 0) {
-    const uint64_t anum = DecodeFixed64(akey.data() + akey.size() - 8);
-    const uint64_t bnum = DecodeFixed64(bkey.data() + bkey.size() - 8);
-    if (anum > bnum) {
+  int r = user_comparator_->Compare(ExtractUserKey(akey), ExtractUserKey(bkey));//先用user_key，并结合用户自定义的comparator进行比较
+  if (r == 0) {//如果比较相等
+    const uint64_t anum = DecodeFixed64(akey.data() + akey.size() - 8);//key a 对应的number（sequence number）
+    const uint64_t bnum = DecodeFixed64(bkey.data() + bkey.size() - 8);//key b 对应的number
+    if (anum > bnum) {//返回－1，说明当前的key与目标key对应的sequence number不同，并且当前key的sequence number比较大，所以要继续向后查找
       r = -1;
-    } else if (anum < bnum) {
+    } else if (anum < bnum) {//返回1，表示找到，当前key对应的sequence number不同，并且当前key的sequence number较小，因此，符合查询标准，可以返回。
       r = +1;
-    }
+    }//如果相等，返回0
   }
   return r;
 }

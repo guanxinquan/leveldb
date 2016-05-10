@@ -299,11 +299,11 @@ class VersionSet {//循环双向链表的集合，存放Version
   const Options* const options_;
   TableCache* const table_cache_;
   const InternalKeyComparator icmp_;
-  uint64_t next_file_number_;
+  uint64_t next_file_number_;//下一个文件的number
   uint64_t manifest_file_number_;//manifest file number
   uint64_t last_sequence_;//最后的seq
-  uint64_t log_number_;
-  uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted
+  uint64_t log_number_;//log的number
+  uint64_t prev_log_number_;  // 0 or backing store for memtable being compacted （之前的imm或者已经压缩成文件的log number）
 
   // Opened lazily
   WritableFile* descriptor_file_;
@@ -313,7 +313,7 @@ class VersionSet {//循环双向链表的集合，存放Version
 
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.
-  std::string compact_pointer_[config::kNumLevels];//当前各个level更新的最大key值
+  std::string compact_pointer_[config::kNumLevels];//每个level下次压缩的起始key值
 
   // No copying allowed
   VersionSet(const VersionSet&);
@@ -369,7 +369,7 @@ class Compaction {
   explicit Compaction(int level);
 
   int level_;//在哪个层次上进行压缩
-  uint64_t max_output_file_size_;//最大输出文件大小
+  uint64_t max_output_file_size_;//最大输出文件大小 默认是2M
   Version* input_version_;//压缩时对应的version
   VersionEdit edit_;
 
@@ -379,9 +379,9 @@ class Compaction {
   // State used to check for number of of overlapping grandparent files
   // (parent == level_ + 1, grandparent == level_ + 2)
   std::vector<FileMetaData*> grandparents_;//覆盖的更高级别的文件列表
-  size_t grandparent_index_;  // Index in grandparent_starts_
-  bool seen_key_;             // Some output key has been seen
-  int64_t overlapped_bytes_;  // Bytes of overlap between current output
+  size_t grandparent_index_;  // Index in grandparent_starts_ 当前压缩key对应level＋2上文件的index（配合grandparents_使用）
+  bool seen_key_;             // Some output key has been seen 压缩开始后被置位成true
+  int64_t overlapped_bytes_;  // Bytes of overlap between current output 当前output key空间跨越多少level＋2的数据。
                               // and grandparent files
 
   // State for implementing IsBaseLevelForKey

@@ -105,7 +105,7 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 Status TableCache::Get(const ReadOptions& options,
                        uint64_t file_number,
                        uint64_t file_size,
-                       const Slice& k,
+                       const Slice& k,//这个是ikey
                        void* arg,
                        void (*saver)(void*, const Slice&, const Slice&)) {//最后两个参数是联合一起使用，倒数第二个是一个值，最后一个是一个函数指针，操作这个值（参考version_edit的get方法
   Cache::Handle* handle = NULL;

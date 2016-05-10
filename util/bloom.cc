@@ -60,7 +60,7 @@ class BloomFilterPolicy : public FilterPolicy {
     }
   }
 
-  virtual bool KeyMayMatch(const Slice& key, const Slice& bloom_filter) const {
+  virtual bool KeyMayMatch(const Slice& key, const Slice& bloom_filter) const {//key是ikey
     const size_t len = bloom_filter.size();
     if (len < 2) return false;
 

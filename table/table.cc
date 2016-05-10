@@ -224,7 +224,7 @@ Iterator* Table::NewIterator(const ReadOptions& options) const {//创建two leve
       &Table::BlockReader, const_cast<Table*>(this), options);
 }
 
-Status Table::InternalGet(const ReadOptions& options, const Slice& k,
+Status Table::InternalGet(const ReadOptions& options, const Slice& k,//这个是ikey
                           void* arg,
                           void (*saver)(void*, const Slice&, const Slice&)) {//后面两个参数是联合使用的
   Status s;
@@ -241,7 +241,7 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
     } else {//key在对应的block中
       Iterator* block_iter = BlockReader(this, options, iiter->value());//从block中读取数据
       block_iter->Seek(k);
-      if (block_iter->Valid()) {//找到数据
+      if (block_iter->Valid()) {//找到对应位置的数据
         (*saver)(arg, block_iter->key(), block_iter->value());//将数据使用指定的函数处理
       }
       s = block_iter->status();

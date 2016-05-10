@@ -165,7 +165,7 @@ class Block::Iter : public Iterator {
     } while (ParseNextKey() && NextEntryOffset() < original);//找到对应的key
   }
 
-  virtual void Seek(const Slice& target) {//查询
+  virtual void Seek(const Slice& target) {//查询，找到第一个大于等于0的元素
     // Binary search in restart array to find the last restart point
     // with a key < target
     uint32_t left = 0;
@@ -199,7 +199,7 @@ class Block::Iter : public Iterator {
       if (!ParseNextKey()) {
         return;
       }
-      if (Compare(key_, target) >= 0) {
+      if (Compare(key_, target) >= 0) {//找到第一个大于等于0的元素
         return;
       }
     }

@@ -16,7 +16,7 @@ class SnapshotList;
 // Each SnapshotImpl corresponds to a particular sequence number.
 class SnapshotImpl : public Snapshot {//双向链表中的元素
  public:
-  SequenceNumber number_;  // const after creation 这里只有一个number
+  SequenceNumber number_;  // const after creation 表示snapshot获取时系统中的sequence number
 
  private:
   friend class SnapshotList;
